@@ -50,6 +50,7 @@
                 <RowDefinition Height="Auto"/>
                 <RowDefinition Height="*"/>
                 <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
             </Grid.RowDefinitions>
             <Label>Select Backup Drive:</Label>
             <ComboBox x:Name="ComboTargetDrive" Grid.Row="1">
@@ -67,7 +68,11 @@
 
             </ListView>
 
-            <Border Grid.Row="6" Padding="2">
+            <CheckBox x:Name="CheckboxShutdown" Grid.Row="6" Foreground="White"
+                      IsChecked="{Binding AutoShutdown, Mode=TwoWay}"
+                      >Shutdown after backup</CheckBox>
+
+            <Border Grid.Row="7" Padding="2">
                 <TextBlock x:Name="StatusText" Text="" Foreground="Salmon" />
             </Border>
         </Grid>

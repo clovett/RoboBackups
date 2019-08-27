@@ -40,7 +40,7 @@ namespace RoboBackups.Utilities
         bool complete;
         Process process;
 
-        public bool Complete { get { return complete; } }
+        public bool Complete { get => complete; set => complete = value; }
 
         public void Run(BackupLog log, CancellationTokenSource cancellation)
         {
@@ -91,7 +91,7 @@ namespace RoboBackups.Utilities
                 Directory.CreateDirectory(target);
             }
             System.Diagnostics.ProcessStartInfo info = new System.Diagnostics.ProcessStartInfo(robocopy,
-                string.Format("{0} {1} /S /NP /XA:HS /R:3 /W:10", sourcePath, target));
+                string.Format("{0} {1} /S /NP /XA:HS /R:3 /W:10 /NFL", sourcePath, target));
             info.CreateNoWindow = true;
             info.RedirectStandardError = true;
             info.RedirectStandardOutput = true;
@@ -122,7 +122,7 @@ namespace RoboBackups.Utilities
             {
                 complete = true;
                 process.Kill();
-                throw new OperationCanceledException();
+                throw new OperationCanceledException("Backup was cancelled.");
             }
         }
 

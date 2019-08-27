@@ -11,6 +11,7 @@ using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Documents;
+using System.Windows.Media;
 
 namespace RoboBackups
 {
@@ -142,6 +143,7 @@ namespace RoboBackups
         }
 
         Backup backup;
+        Brush defaultButtonBrush;
         CancellationTokenSource cancel;
 
         private void StopBackup()
@@ -154,22 +156,46 @@ namespace RoboBackups
             {
                 _log.Dispose();
             }
+            if (ButtonBackup.Tag != null)
+            {
+                ButtonBackup.Content = ButtonBackup.Tag;
+                ButtonBackup.Tag = null;
+                if (defaultButtonBrush != null)
+                {
+                    ButtonBackup.Background = defaultButtonBrush;
+                }
+            }
         }
 
         private void OnBackup(object sender, RoutedEventArgs e)
         {
-            Backup(false);
-        }
+            Button button = (Button)sender;
+            if (button.Tag != null)
+            {
+                StopBackup();
+            }
+            else
+            {
+                LogDocument.Blocks.Clear();
+                StopBackup();
+                ButtonBackup.Tag = ButtonBackup.Content;
+                ButtonBackup.Content = "Cancel";
+                if (defaultButtonBrush == null)
+                {
+                    defaultButtonBrush = ButtonBackup.Background;
+                }
+                ButtonBackup.Background = new SolidColorBrush(Color.FromRgb(0x97, 0x36, 0x27));
+                ButtonBackup.InvalidateVisual();
 
-        private void OnBackupAndShutdown(object sender, RoutedEventArgs e)
-        {
-            Backup(true);
+                // give UI a chance to update before we start the big thing
+                delayedActions.StartDelayedAction("Backup", Backup, TimeSpan.FromMilliseconds(100));
+            }
         }
-
-        void Backup(bool shutdown)
+        
+        void Backup()
         {
-            LogDocument.Blocks.Clear();
-            StopBackup();
+            bool shutdown = Settings.Instance.AutoShutdown;
+
             backup = new Backup();
             var log = new FlowDocumentLog(ConsoleTextBox);
             this._log = log;
@@ -182,8 +208,10 @@ namespace RoboBackups
                 }
                 catch (Exception ex)
                 {
+                    backup.Complete = true;
                     log.WriteLine(ex.Message);
                 }
+                UiDispatcher.RunOnUIThread(StopBackup);
                 if (shutdown)
                 {
                     backup.Shutdown();
@@ -233,23 +261,24 @@ namespace RoboBackups
             List<string> pending = new List<string>();
             DelayedActions delayedActions = new DelayedActions();
             bool actionPending;
-            TextWriter logFile;
+            //TextWriter logFile;
+            bool uiUpdated;
 
             public FlowDocumentLog(RichTextBox box)
             {
                 this.box = box;
                 this.doc = box.Document;
                 string filename = Settings.LogFile;
-                logFile = new StreamWriter(filename, false, System.Text.Encoding.UTF8);
+                //logFile = new StreamWriter(filename, false, System.Text.Encoding.UTF8);
             }
 
             public void Dispose()
             {
-                if (logFile != null)
-                {
-                    logFile.Close();
-                    logFile = null;
-                }
+                //if (logFile != null)
+                //{
+                //    logFile.Close();
+                //    logFile = null;
+                //}
             }
 
             public override void WriteLine(string message)
@@ -258,11 +287,11 @@ namespace RoboBackups
                 {
                     return;
                 }
-                if (logFile != null)
-                {
-                    logFile.WriteLine(message);
-                    logFile.Flush();
-                }
+                //if (logFile != null)
+                //{
+                //    logFile.WriteLine(message);
+                //    logFile.Flush();
+                //}
 
                 lock (pending)
                 {
@@ -277,7 +306,6 @@ namespace RoboBackups
 
             void OnUpdate()
             {
-                actionPending = false;
                 string[] toUpdate = null;
                 lock (pending)
                 {
@@ -313,6 +341,13 @@ namespace RoboBackups
                     box.Selection.Select(doc.ContentEnd, doc.ContentEnd);
                     box.ScrollToEnd();
                 }
+
+                box.Dispatcher.BeginInvoke(new Action(OnUiUpdated), System.Windows.Threading.DispatcherPriority.ContextIdle);
+            }
+
+            void OnUiUpdated()
+            {
+                actionPending = false;
             }
 
         }

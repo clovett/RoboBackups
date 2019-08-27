@@ -33,6 +33,8 @@ namespace RoboBackups.Controls
 
             UpdateDriveSelection();
             UpdateFolderSelection();
+
+            this.DataContext = Settings.Instance;
         }
 
         private void ComboTargetFolder_PreviewKeyDown(object sender, System.Windows.Input.KeyEventArgs e)
