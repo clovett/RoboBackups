@@ -105,6 +105,40 @@ namespace Microsoft.Storage
             return loadedFile;
         }
 
+        /// <summary>
+        /// Loads data from a file asynchronously.
+        /// </summary>
+        /// <param name="folder">The folder to get the file from</param>
+        /// <param name="fileName">Name of the file to read.</param>
+        /// <returns>Deserialized data object</returns>
+        public T LoadFromFile(string folder, string fileName)
+        {
+            T loadedFile = default(T);
+
+            string fullPath = Path.Combine(folder, fileName);
+            using (var l = EnterLock(fullPath))
+            {
+                try
+                {
+                    if (fullPath != null)
+                    {
+                        Debug.WriteLine("Loading file: {0}", fullPath);
+                        
+                        using (Stream myFileStream = File.OpenRead(fullPath))
+                        {
+                            // Call the Deserialize method and cast to the object type.
+                            loadedFile = LoadFromStream(myFileStream);
+                        }
+                    }
+                }
+                catch
+                {
+                    // silently rebuild data file if it got corrupted.
+                }
+            }
+            return loadedFile;
+        }
+
         public T LoadFromStream(Stream s)
         {
             // Call the Deserialize method and cast to the object type.

@@ -3,9 +3,27 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
+             xmlns:local="clr-namespace:RoboBackups.Controls"
              mc:Ignorable="d" 
-             BorderBrush="white" BorderThickness="1"
-             d:DesignHeight="300" d:DesignWidth="300">
+             d:DesignHeight="500" d:DesignWidth="300">
+    <UserControl.Resources>
+        <local:BooleanVisibilityConverter x:Key="BooleanVisibilityConverter"/>
+        <Style x:Key="CompactListStyle" TargetType="ListBoxItem">
+            <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+            <Setter Property="Padding" Value="1"/>
+        </Style>
+
+        <DataTemplate x:Key="FolderItemTemplate">
+            <Grid >
+                <local:EditableTextBlock Label="{Binding Path, Mode=TwoWay}"  Foreground="white"
+                                         TextBoxFocussed="OnLabelTextBoxFocussed"
+                                         KeyDown="OnLabelKeyDown"  Margin="0,0,0,4"/>
+
+                <local:CloseBox HorizontalAlignment="Right" Margin="4" Click="OnCloseClick"
+                                Visibility="{Binding IsSelected, Converter={StaticResource BooleanVisibilityConverter}}"/>
+            </Grid>
+        </DataTemplate>
+    </UserControl.Resources>
     <Grid Background="{StaticResource ControlBackgroundBrush}">
 
         <Grid.RowDefinitions>
@@ -28,13 +46,30 @@
                 <RowDefinition Height="Auto"/>
                 <RowDefinition Height="Auto"/>
                 <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
                 <RowDefinition Height="*"/>
                 <RowDefinition Height="Auto"/>
             </Grid.RowDefinitions>
-            <Label >Theme:</Label>
-            <ComboBox x:Name="ThemeSelection" Grid.Row="1">
+            <Label>Select Backup Drive:</Label>
+            <ComboBox x:Name="ComboTargetDrive" Grid.Row="1">
             </ComboBox>
 
+            <Label x:Name="PromptTargetFolder" Grid.Row="2">Select Backup Target Folder:</Label>
+            <ComboBox x:Name="ComboTargetFolder" Grid.Row="3" IsEditable="True">
+            </ComboBox>
+
+            <Label x:Name="PromptSourceFolders" Grid.Row="4">Select Folders to Backup:</Label>
+            <ListView x:Name="SourceFolders" Grid.Row="5" Focusable="True" SelectionMode="Single" 
+                      ItemContainerStyle="{StaticResource CompactListStyle}"
+                      ItemTemplate="{StaticResource FolderItemTemplate}" 
+                      BorderThickness="0">
+
+            </ListView>
+
+            <Border Grid.Row="6" Padding="2">
+                <TextBlock x:Name="StatusText" Text="" Foreground="Salmon" />
+            </Border>
         </Grid>
     </Grid>
 </UserControl>

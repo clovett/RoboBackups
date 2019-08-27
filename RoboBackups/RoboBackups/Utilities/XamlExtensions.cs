@@ -22,7 +22,7 @@ namespace RoboBackups.Utilities
             TranslateTransform transform = new TranslateTransform(width, 0);
             e.RenderTransform = transform;
             transform.BeginAnimation(TranslateTransform.XProperty,
-                new DoubleAnimation(0, new Duration(TimeSpan.FromSeconds(0.2)))
+                new DoubleAnimation(0, new Duration(TimeSpan.FromSeconds(0.1)))
                 {
                     EasingFunction = new ExponentialEase() { EasingMode = EasingMode.EaseOut }
                 });

@@ -1,4 +1,5 @@
 ﻿using Microsoft.Storage;
+using RoboBackups.Controls;
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;
@@ -20,10 +21,11 @@ namespace RoboBackups.Utilities
     public class Settings : INotifyPropertyChanged
     {
         const string SettingsFileName = "settings.xml";
-        string fileName;
+        string backupPath;
         Point windowLocation;
         Size windowSize;
         AppTheme theme = AppTheme.Dark;
+        SourceFolderViewModel model = new SourceFolderViewModel();
 
         static Settings _instance;
 
@@ -36,9 +38,19 @@ namespace RoboBackups.Utilities
         {
             get
             {
-                string appSetttingsPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), @"Microsoft\RoboBackups");
+                string appSetttingsPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), @"LovettSoftware\RoboBackups");
                 Directory.CreateDirectory(appSetttingsPath);
                 return appSetttingsPath;
+            }
+        }
+
+        public static string LogFile
+        {
+            get
+            {
+                string appSetttingsPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), @"LovettSoftware\RoboBackups");
+                Directory.CreateDirectory(appSetttingsPath);
+                return Path.Combine(appSetttingsPath, "log.txt");
             }
         }
 
@@ -57,33 +69,70 @@ namespace RoboBackups.Utilities
         public Point WindowLocation
         {
             get { return this.windowLocation; }
-            set { this.windowLocation = value; }
+            set
+            {
+                if (this.windowLocation != value)
+                {
+                    this.windowLocation = value;
+                    OnPropertyChanged("WindowLocation");
+                }
+            }
         }
 
         public Size WindowSize
         {
             get { return this.windowSize; }
-            set { this.windowSize = value; }
+            set
+            {
+                if (this.windowSize != value)
+                {
+                    this.windowSize = value;
+                    OnPropertyChanged("WindowSize");
+                }
+            }
         }
 
         public AppTheme Theme
         {
             get { return this.theme; }
-            set { this.theme = value; }
+            set
+            {
+                if (this.theme != value)
+                {
+                    this.theme = value;
+                    OnPropertyChanged("Theme");
+                }
+            }
         }
 
-        public string LastFile
+        public string BackupPath
         {
             get
             {
-                return this.fileName;
+                return this.backupPath;
             }
             set
             {
-                if (this.fileName != value)
+                if (this.backupPath != value)
                 {
-                    this.fileName = value;
-                    OnPropertyChanged("LastFile");
+                    this.backupPath = value;
+                    OnPropertyChanged("BackupPath");
+                }
+            }
+        }
+
+        public SourceFolderViewModel Model
+        {
+            get
+            {
+                return model;
+            }
+            set
+            {
+                if (this.model != value)
+                {
+                    this.model = value;
+                    OnPropertyChanged("Model");
                 }
             }
         }
@@ -101,14 +150,14 @@ namespace RoboBackups.Utilities
             }
         }
 
-        public static async Task<Settings> LoadAsync()
+        public static Settings Load()
         {
             var store = new IsolatedStorage<Settings>();
             Settings result = null;
             try
             {
                 Debug.WriteLine("Loading settings from : " + SettingsFolder);
-                result = await store.LoadFromFileAsync(SettingsFolder, SettingsFileName);
+                result = store.LoadFromFile(SettingsFolder, SettingsFileName);
             }
             catch
             {
@@ -116,7 +165,6 @@ namespace RoboBackups.Utilities
             if (result == null)
             {
                 result = new Settings();
-                await result.SaveAsync();
             }
             return result;
         }

@@ -16,13 +16,10 @@ namespace RoboBackups
     {
         Settings settings;
 
-        public async Task<Settings> LoadSettings()
+        protected override void OnStartup(StartupEventArgs e)
         {
-            if (this.settings == null)
-            {
-                this.settings = await Settings.LoadAsync();
-            }
-            return this.settings;
-        }
+            this.settings = Settings.Load();
+            base.OnStartup(e);
+        }        
     }
 }

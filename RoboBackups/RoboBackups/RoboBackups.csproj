@@ -35,6 +35,9 @@
     <WarningLevel>4</WarningLevel>
   </PropertyGroup>
   <ItemGroup>
+    <Reference Include="Ookii.Dialogs.Wpf, Version=1.0.0.0, Culture=neutral, PublicKeyToken=0c15020868fd6249, processorArchitecture=MSIL">
+      <HintPath>..\packages\Ookii.Dialogs.1.0\lib\net35\Ookii.Dialogs.Wpf.dll</HintPath>
+    </Reference>
     <Reference Include="System" />
     <Reference Include="System.Data" />
     <Reference Include="System.Drawing" />
@@ -57,12 +60,38 @@
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>
     </ApplicationDefinition>
+    <Compile Include="Controls\BooleanVisibilityConverter.cs" />
+    <Compile Include="Controls\ButtonBorder.xaml.cs">
+      <DependentUpon>ButtonBorder.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="Controls\CloseBox.xaml.cs">
+      <DependentUpon>CloseBox.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="Controls\CustomizableButton.cs" />
+    <Compile Include="Controls\EditableTextBlock.xaml.cs">
+      <DependentUpon>EditableTextBlock.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="Controls\SourceFolderViewModel.cs" />
+    <Compile Include="Utilities\Backup.cs" />
     <Compile Include="Utilities\DelayedAction.cs" />
+    <Compile Include="Utilities\HlsColor.cs" />
     <Compile Include="Utilities\IsolatedStorage.cs" />
     <Compile Include="Utilities\Settings.cs" />
     <Compile Include="Utilities\UiDispatcher.cs" />
     <Compile Include="Utilities\XamlExtensions.cs" />
     <Page Include="Controls\AppSettings.xaml">
+      <Generator>MSBuild:Compile</Generator>
+      <SubType>Designer</SubType>
+    </Page>
+    <Page Include="Controls\ButtonBorder.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+    <Page Include="Controls\CloseBox.xaml">
+      <Generator>MSBuild:Compile</Generator>
+      <SubType>Designer</SubType>
+    </Page>
+    <Page Include="Controls\EditableTextBlock.xaml">
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>
     </Page>
@@ -104,6 +133,7 @@
       <Generator>ResXFileCodeGenerator</Generator>
       <LastGenOutput>Resources.Designer.cs</LastGenOutput>
     </EmbeddedResource>
+    <None Include="packages.config" />
     <None Include="Properties\Settings.settings">
       <Generator>SettingsSingleFileGenerator</Generator>
       <LastGenOutput>Settings.Designer.cs</LastGenOutput>

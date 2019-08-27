@@ -5,19 +5,16 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:RoboBackups.Controls"
         mc:Ignorable="d"
-        Title="Robo Backup Tool" Height="800" Width="1280">
+        Title="Robo Backup Tool" Height="600" Width="800">
 
     <Grid Style="{StaticResource AppGridBackground}">
 
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
-            <RowDefinition Height="Auto"/>
             <RowDefinition Height="*"/>
-            <RowDefinition Height="Auto"/>
             <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
         <Grid.ColumnDefinitions>
-            <ColumnDefinition Width="200"/>
             <ColumnDefinition Width="*"/>
         </Grid.ColumnDefinitions>
 
@@ -36,24 +33,54 @@
                 <ColumnDefinition Width="*"/>
                 <ColumnDefinition Width="Auto"/>
             </Grid.ColumnDefinitions>
-            <Button x:Name="OpenButton" Style="{StaticResource AppBarButtonStyle}" ToolTip="Open" Click="OnOpenFile">&#xE197;</Button>
+            <!--<Button x:Name="OpenButton" Style="{StaticResource AppBarButtonStyle}" ToolTip="Open" Click="OnOpenFile">&#xE197;</Button>-->
 
             <!--<ToggleButton x:Name="ShowMapButton"  Grid.Column="1" Style="{StaticResource AppBarToggleButtonStyle}" ToolTip="Map" Checked="OnShowMap" Unchecked="OnHideMap">&#xE1C4;</ToggleButton>-->
 
-            <Button x:Name="ClearButton"  Grid.Column="3" Style="{StaticResource AppBarButtonStyle}" ToolTip="Clear" Click="OnClear">&#xE106;</Button>
+            <!--<Button x:Name="ClearButton"  Grid.Column="3" Style="{StaticResource AppBarButtonStyle}" ToolTip="Clear" Click="OnClear">&#xE106;</Button>-->
 
-            <!--<Button x:Name="RecordButton" Style="{StaticResource AppBarButtonStyle}" Grid.Column="8" Click="OnRecord">&#xE102;</Button>-->
+            <!--<Button x:Name="RecordButton" Style="{StaticResource AppBarButtonStyle}" Grid.Column="8" Click="OnRecord">&#xE102;</Button>-->            
 
-            <Button x:Name="SettingsButton" Style="{StaticResource AppBarButtonStyle}" Grid.Column="9" Click="OnSettings">&#xE115;</Button>
+        </Grid>
+
+        <Grid Grid.Row="1">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="200"/>
+                <ColumnDefinition Width="200"/>
+                <ColumnDefinition Width="200"/>
+                <ColumnDefinition Width="*"/>
+            </Grid.ColumnDefinitions>
+            <Grid.RowDefinitions>
+                <RowDefinition Height="200"/>
+                <RowDefinition Height="*"/>
+            </Grid.RowDefinitions>
+
+            <Button Grid.Row="0" Grid.Column="0" Background="Green" Click="OnBackupAndShutdown" Content="Backup &amp;&#xd; Shutdown" Style="{StaticResource AppBarButtonStyle}"
+                    HorizontalAlignment="Stretch" Margin="10"/>
+
+
+            <Button Grid.Row="0" Grid.Column="1" Background="#FF27976E" Click="OnBackup" Content="Backup" Style="{StaticResource AppBarButtonStyle}"
+                    HorizontalAlignment="Stretch" Margin="10"/>
+
+
+            <Button Grid.Row="0" Grid.Column="2"  x:Name="SettingsButton" Style="{StaticResource AppBarButtonStyle}" Click="OnSettings" FontSize="72"
+                    HorizontalAlignment="Stretch" Background="#FF278D97" Margin="10" Content="&#xE115;"/>
+
+            <RichTextBox Grid.Row="1" Grid.ColumnSpan="4" x:Name="ConsoleTextBox" ScrollViewer.VerticalScrollBarVisibility="Auto" HorizontalAlignment="Stretch"
+                          Style="{StaticResource AppTextBox}" BorderThickness="0" >
+                <RichTextBox.Document>
+                    <FlowDocument x:Name="LogDocument">
+                    </FlowDocument>
+                </RichTextBox.Document>
+            </RichTextBox>
 
         </Grid>
 
 
-        <local:AppSettings x:Name="AppSettingsPanel" Grid.Row="2" Grid.Column="1" Width="300" HorizontalAlignment="Right" Visibility="Collapsed">
+        <local:AppSettings x:Name="AppSettingsPanel" Grid.Row="1" Grid.Column="1" Visibility="Collapsed">
         </local:AppSettings>
 
-
-        <Border Grid.ColumnSpan="2" Grid.Row="4" Style="{StaticResource AppStatusBorder}">
+        <Border Grid.ColumnSpan="2" Grid.Row="2" Style="{StaticResource AppStatusBorder}">
             <TextBlock x:Name="StatusText" Text=""  Margin="5" />
         </Border>
     </Grid>
