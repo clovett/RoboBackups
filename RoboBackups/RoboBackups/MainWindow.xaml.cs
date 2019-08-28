@@ -336,7 +336,6 @@ namespace RoboBackups
                     UiDispatcher.RunOnUIThread(ShowCancelShutdown);
                 }
 
-                throw new Exception("Silly exception");
                 UiDispatcher.RunOnUIThread(StopBackup);
             });
         }
