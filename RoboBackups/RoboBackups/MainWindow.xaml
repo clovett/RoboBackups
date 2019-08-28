@@ -29,8 +29,17 @@
                 <ColumnDefinition Width="Auto"/>
             </Grid.ColumnDefinitions>
 
-            <Button x:Name="ButtonBackup" Grid.Row="0" Grid.Column="1" Background="#FF278D97" Click="OnBackup" Content="Backup" Style="{StaticResource AppBarButtonStyle}"
-                    MinWidth="80" Margin="10"/>
+            <Button x:Name="ButtonBackup" Grid.Row="0" Grid.Column="0" Background="#FF278D97" Click="OnBackup" Content="Backup" 
+                    Style="{StaticResource AppBarButtonStyle}" 
+                    MinWidth="100" Margin="10"/>
+            
+            <Button x:Name="ButtonShutdownBackup" Grid.Row="0" Grid.Column="1" Background="#FF278D97" Click="OnBackupShutdown" 
+                    Content="Backup &amp;&#xd;Shutdown" Style="{StaticResource AppBarButtonStyle}" 
+                    MinWidth="100" Margin="10"/>
+
+            <Button x:Name="ButtonCancelShutdown" Grid.Row="0" Grid.Column="2" Background="#FF278D97" Click="OnCancelShutdown" 
+                    Content="Cancel&#xd;Shutdown" Style="{StaticResource AppBarButtonStyle}" Visibility="Hidden"
+                    MinWidth="100" Margin="10"/>
             
             <!--<Button x:Name="OpenButton" Style="{StaticResource AppBarButtonStyle}" ToolTip="Open" Click="OnOpenFile">&#xE197;</Button>-->
 
@@ -41,7 +50,7 @@
             <!--<Button x:Name="RecordButton" Style="{StaticResource AppBarButtonStyle}" Grid.Column="8" Click="OnRecord">&#xE102;</Button>-->
 
             <Button Grid.Row="0" Grid.Column="6"  x:Name="SettingsButton" Style="{StaticResource AppBarButtonStyle}" Click="OnSettings" FontSize="64"
-                    MinWidth="80"  Background="#FF278D97" Margin="10" Content="&#xE115;"/>
+                    MinWidth="100"  Background="#FF278D97" Margin="10" Content="&#xE115;"/>
         </Grid>
 
         <Grid Grid.Row="1">

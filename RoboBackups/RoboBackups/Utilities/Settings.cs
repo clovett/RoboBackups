@@ -24,7 +24,6 @@ namespace RoboBackups.Utilities
         string backupPath;
         Point windowLocation;
         Size windowSize;
-        bool autoShutdown;
         AppTheme theme = AppTheme.Dark;
         SourceFolderViewModel model = new SourceFolderViewModel();
 
@@ -134,19 +133,6 @@ namespace RoboBackups.Utilities
                 {
                     this.model = value;
                     OnPropertyChanged("Model");
-                }
-            }
-        }
-
-        public bool AutoShutdown
-        {
-            get => autoShutdown;
-            set
-            {
-                if (autoShutdown != value)
-                {
-                    autoShutdown = value;
-                    OnPropertyChanged("AutoShutdown");
                 }
             }
         }

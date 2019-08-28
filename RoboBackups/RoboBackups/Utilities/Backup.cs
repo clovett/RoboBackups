@@ -150,5 +150,14 @@ namespace RoboBackups.Utilities
             psi.UseShellExecute = false;
             Process.Start(psi);
         }
+
+        internal void CancelShutdown()
+        {
+            log.WriteLine("Shutdown cancelled.");
+            var psi = new ProcessStartInfo("shutdown", "/a");
+            psi.CreateNoWindow = true;
+            psi.UseShellExecute = false;
+            Process.Start(psi);
+        }
     }
 }

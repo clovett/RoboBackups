@@ -12,6 +12,7 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Documents;
 using System.Windows.Media;
+using System.Windows.Threading;
 
 namespace RoboBackups
 {
@@ -45,7 +46,100 @@ namespace RoboBackups
             {
                 LoadLogFile(filename);
             }
+
+            System.Windows.Forms.Application.SetUnhandledExceptionMode(System.Windows.Forms.UnhandledExceptionMode.CatchException);
+            AppDomain.CurrentDomain.UnhandledException += new UnhandledExceptionEventHandler(OnUnhandledException);
+            App.Current.DispatcherUnhandledException += new DispatcherUnhandledExceptionEventHandler(OnDispatcherUnhandledException);
+            TaskScheduler.UnobservedTaskException += TaskScheduler_UnobservedTaskException;
+
         }
+
+        private void TaskScheduler_UnobservedTaskException(object sender, UnobservedTaskExceptionEventArgs e)
+        {
+            if (e.Exception != null)
+            {
+                HandleUnhandledException(e.Exception);
+            }
+            e.SetObserved();
+        }
+
+        private void OnUnhandledException(object sender, UnhandledExceptionEventArgs e)
+        {
+            // Log it to error window instead of crashing the app
+            if (e.IsTerminating)
+            {
+                string msg = null;
+                if (e.ExceptionObject != null)
+                {
+                    msg = "The reason is:\n" + e.ExceptionObject.ToString();
+                }
+
+                MessageBoxEx.Show("The program is terminating", "Terminating", msg, MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+            else if (e.ExceptionObject != null)
+            {
+                HandleUnhandledException(e.ExceptionObject);
+            }
+        }
+
+        bool HandleUnhandledException(object exceptionObject)
+        {
+            Exception ex = exceptionObject as Exception;
+            string message = null;
+            string details = null;
+            if (ex == null && exceptionObject != null)
+            {
+                message = exceptionObject.GetType().FullName;
+                details = exceptionObject.ToString();
+            }
+            else
+            {
+                message = ex.Message;
+                details = ex.ToString();
+            }
+
+            try
+            {
+                UiDispatcher.RunOnUIThread(() =>
+                {
+                    MessageBoxEx.Show(message, "Unhandled Exception", details, MessageBoxButton.OK, MessageBoxImage.Error);
+                });
+                return true;
+            }
+            catch (Exception)
+            {
+                // hmmm, if we can't show the dialog then perhaps this is some sort of stack overflow.
+                // save the details to a file, terminate the process and                 
+            }
+            return false;
+        }
+
+        // stop re-entrancy
+        bool handlingException;
+
+        void OnDispatcherUnhandledException(object sender, DispatcherUnhandledExceptionEventArgs e)
+        {
+            if (handlingException)
+            {
+                e.Handled = false;
+            }
+            else
+            {
+                handlingException = true;
+                UiDispatcher.RunOnUIThread(new Action(() =>
+                {
+                    try
+                    {
+                        e.Handled = HandleUnhandledException(e.Exception);
+                    }
+                    catch (Exception)
+                    {
+                    }
+                    handlingException = false;
+                }));
+            }
+        }
+
 
         private void OnModelItemsChanged(object sender, NotifyCollectionChangedEventArgs e)
         {
@@ -85,16 +179,6 @@ namespace RoboBackups
             {
                 // todo: try again in a bit.
             }
-        }
-
-        private void OnOpenFile(object sender, RoutedEventArgs e)
-        {
-
-        }
-
-        private void OnClear(object sender, RoutedEventArgs e)
-        {
-
         }
 
         private void OnSettings(object sender, RoutedEventArgs e)
@@ -152,10 +236,6 @@ namespace RoboBackups
             {
                 cancel.Cancel();
             }
-            if (_log != null)
-            {
-                _log.Dispose();
-            }
             if (ButtonBackup.Tag != null)
             {
                 ButtonBackup.Content = ButtonBackup.Tag;
@@ -164,6 +244,22 @@ namespace RoboBackups
                 {
                     ButtonBackup.Background = defaultButtonBrush;
                 }
+            }
+
+            if (ButtonShutdownBackup.Tag != null)
+            {
+                ButtonShutdownBackup.Content = ButtonShutdownBackup.Tag;
+                ButtonShutdownBackup.Tag = null;
+                if (defaultButtonBrush != null)
+                {
+                    ButtonShutdownBackup.Background = defaultButtonBrush;
+                }
+            }
+            ButtonBackup.IsEnabled = true;
+            ButtonShutdownBackup.IsEnabled = true;
+            if (_log != null)
+            {
+                _log.OnUpdate();
             }
         }
 
@@ -178,6 +274,7 @@ namespace RoboBackups
             {
                 LogDocument.Blocks.Clear();
                 StopBackup();
+                ButtonShutdownBackup.IsEnabled = false;
                 ButtonBackup.Tag = ButtonBackup.Content;
                 ButtonBackup.Content = "Cancel";
                 if (defaultButtonBrush == null)
@@ -185,17 +282,39 @@ namespace RoboBackups
                     defaultButtonBrush = ButtonBackup.Background;
                 }
                 ButtonBackup.Background = new SolidColorBrush(Color.FromRgb(0x97, 0x36, 0x27));
-                ButtonBackup.InvalidateVisual();
 
                 // give UI a chance to update before we start the big thing
-                delayedActions.StartDelayedAction("Backup", Backup, TimeSpan.FromMilliseconds(100));
+                delayedActions.StartDelayedAction("Backup", () => Backup(false), TimeSpan.FromMilliseconds(100));
             }
         }
-        
-        void Backup()
-        {
-            bool shutdown = Settings.Instance.AutoShutdown;
 
+        private void OnBackupShutdown(object sender, RoutedEventArgs e)
+        {
+            Button button = (Button)sender;
+            if (button.Tag != null)
+            {
+                StopBackup();
+            }
+            else
+            {
+                LogDocument.Blocks.Clear();
+                StopBackup();
+                ButtonBackup.IsEnabled = false;
+                ButtonShutdownBackup.Tag = ButtonShutdownBackup.Content;
+                ButtonShutdownBackup.Content = "Cancel";
+                if (defaultButtonBrush == null)
+                {
+                    defaultButtonBrush = ButtonShutdownBackup.Background;
+                }
+                ButtonShutdownBackup.Background = new SolidColorBrush(Color.FromRgb(0x97, 0x36, 0x27));
+
+                // give UI a chance to update before we start the big thing
+                delayedActions.StartDelayedAction("Backup", () => Backup(true), TimeSpan.FromMilliseconds(100));
+            }
+        }
+
+        void Backup(bool shutdown)
+        {
             backup = new Backup();
             var log = new FlowDocumentLog(ConsoleTextBox);
             this._log = log;
@@ -211,12 +330,20 @@ namespace RoboBackups
                     backup.Complete = true;
                     log.WriteLine(ex.Message);
                 }
-                UiDispatcher.RunOnUIThread(StopBackup);
                 if (shutdown)
                 {
                     backup.Shutdown();
+                    UiDispatcher.RunOnUIThread(ShowCancelShutdown);
                 }
+
+                throw new Exception("Silly exception");
+                UiDispatcher.RunOnUIThread(StopBackup);
             });
+        }
+
+        void ShowCancelShutdown()
+        {
+            ButtonCancelShutdown.Visibility = Visibility.Visible;
         }
 
         private void LoadLogFile(string filename)
@@ -242,7 +369,7 @@ namespace RoboBackups
         {
             if (this.backup != null && !this.backup.Complete)
             {
-                if (MessageBox.Show("Backup is running, do you want to stop the backup?", "Terminate backup", MessageBoxButton.YesNo, MessageBoxImage.Question) == MessageBoxResult.No)
+                if (MessageBoxEx.Show("Backup is running, do you want to stop the backup?", "Terminate backup", MessageBoxButton.YesNo, MessageBoxImage.Question) == MessageBoxResult.No)
                 {
                     e.Cancel = true;
                     return;
@@ -254,14 +381,13 @@ namespace RoboBackups
 
         FlowDocumentLog _log;
 
-        class FlowDocumentLog : BackupLog, IDisposable
+        class FlowDocumentLog : BackupLog
         {
             RichTextBox box;
             FlowDocument doc;
             List<string> pending = new List<string>();
             DelayedActions delayedActions = new DelayedActions();
             bool actionPending;
-            //TextWriter logFile;
             bool uiUpdated;
 
             public FlowDocumentLog(RichTextBox box)
@@ -269,16 +395,6 @@ namespace RoboBackups
                 this.box = box;
                 this.doc = box.Document;
                 string filename = Settings.LogFile;
-                //logFile = new StreamWriter(filename, false, System.Text.Encoding.UTF8);
-            }
-
-            public void Dispose()
-            {
-                //if (logFile != null)
-                //{
-                //    logFile.Close();
-                //    logFile = null;
-                //}
             }
 
             public override void WriteLine(string message)
@@ -287,12 +403,6 @@ namespace RoboBackups
                 {
                     return;
                 }
-                //if (logFile != null)
-                //{
-                //    logFile.WriteLine(message);
-                //    logFile.Flush();
-                //}
-
                 lock (pending)
                 {
                     pending.Add(message);
@@ -304,7 +414,7 @@ namespace RoboBackups
                 }
             }
 
-            void OnUpdate()
+            public void OnUpdate()
             {
                 string[] toUpdate = null;
                 lock (pending)
@@ -315,33 +425,34 @@ namespace RoboBackups
                         pending.Clear();
                     }
                 }
-
-                bool scrollToEnd = true;
-                var ptr = box.Selection.End;
-                var end = box.Document.ContentEnd;
-                if (ptr.GetOffsetToPosition(end) > 10)
+                if (toUpdate != null)
                 {
-                    scrollToEnd = false;
-                }
-
-                foreach (string line in toUpdate)
-                {
-                    if (doc.Blocks.Count == 0)
+                    bool scrollToEnd = true;
+                    var ptr = box.Selection.End;
+                    var end = box.Document.ContentEnd;
+                    if (ptr.GetOffsetToPosition(end) > 10)
                     {
-                        Paragraph p = new Paragraph();
-                        doc.Blocks.Add(p);
+                        scrollToEnd = false;
                     }
-                    Paragraph lines = (Paragraph)doc.Blocks.FirstOrDefault();
-                    lines.Inlines.Add(new Run() { Text = line });
-                    lines.Inlines.Add(new LineBreak());
-                }
 
-                if (scrollToEnd)
-                {
-                    box.Selection.Select(doc.ContentEnd, doc.ContentEnd);
-                    box.ScrollToEnd();
-                }
+                    foreach (string line in toUpdate)
+                    {
+                        if (doc.Blocks.Count == 0)
+                        {
+                            Paragraph p = new Paragraph();
+                            doc.Blocks.Add(p);
+                        }
+                        Paragraph lines = (Paragraph)doc.Blocks.FirstOrDefault();
+                        lines.Inlines.Add(new Run() { Text = line });
+                        lines.Inlines.Add(new LineBreak());
+                    }
 
+                    if (scrollToEnd)
+                    {
+                        box.Selection.Select(doc.ContentEnd, doc.ContentEnd);
+                        box.ScrollToEnd();
+                    }
+                }
                 box.Dispatcher.BeginInvoke(new Action(OnUiUpdated), System.Windows.Threading.DispatcherPriority.ContextIdle);
             }
 
@@ -352,5 +463,10 @@ namespace RoboBackups
 
         }
 
+        private void OnCancelShutdown(object sender, RoutedEventArgs e)
+        {
+            ButtonCancelShutdown.Visibility = Visibility.Hidden;
+            backup.CancelShutdown();
+        }
     }
 }
