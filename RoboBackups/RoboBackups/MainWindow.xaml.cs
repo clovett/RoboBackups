@@ -336,6 +336,9 @@ namespace RoboBackups
                     UiDispatcher.RunOnUIThread(ShowCancelShutdown);
                 }
 
+                log.WriteLine("===========================================================");
+                log.WriteLine("BACKUP COMPLETE ");
+                log.WriteLine("===========================================================");
                 UiDispatcher.RunOnUIThread(StopBackup);
             });
         }

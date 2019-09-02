@@ -14,6 +14,8 @@ namespace RoboBackups.Controls
     /// </summary>
     public partial class AppSettings : UserControl
     {
+        bool initialized;
+
         public AppSettings()
         {
             InitializeComponent();
@@ -33,7 +35,7 @@ namespace RoboBackups.Controls
 
             UpdateDriveSelection();
             UpdateFolderSelection();
-
+            initialized = true;
         }
 
         private void ComboTargetFolder_PreviewKeyDown(object sender, System.Windows.Input.KeyEventArgs e)
@@ -61,9 +63,14 @@ namespace RoboBackups.Controls
                     if (!root.Contains(":"))
                     {
                         // has no drive so grab the drive from current backup path
-                        if (!string.IsNullOrEmpty(Settings.Instance.BackupPath))
+                        string backupPath = Settings.Instance.BackupPath;
+                        if (string.IsNullOrEmpty(backupPath) && ComboTargetDrive.SelectedItem != null)
                         {
-                            path = Path.Combine(Path.GetPathRoot(Settings.Instance.BackupPath), path);
+                            backupPath = ((DriveItem)ComboTargetDrive.SelectedItem).DriveInfo.Name;
+                        }
+                        if (!string.IsNullOrEmpty(backupPath))
+                        {
+                            path = Path.Combine(Path.GetPathRoot(backupPath), path);
                         }
                     }
                     
@@ -142,6 +149,10 @@ namespace RoboBackups.Controls
 
         private void ComboTargetDrive_SelectionChanged(object sender, SelectionChangedEventArgs e)
         {
+            if (!initialized)
+            {
+                return;
+            }
             if (e.AddedItems != null && e.AddedItems.Count > 0)
             {
                 DriveItem item = e.AddedItems[0] as DriveItem;
@@ -170,6 +181,7 @@ namespace RoboBackups.Controls
                 {
                     ComboTargetFolder.Items.Clear();
                     var rootDir = item.DriveInfo.RootDirectory;
+                    bool found = false;
                     foreach (var dir in rootDir.GetDirectories())
                     {
                         if ((dir.Attributes & FileAttributes.Hidden) == 0 && (dir.Attributes & FileAttributes.System) == 0 && (dir.Attributes & FileAttributes.ReadOnly) == 0)
@@ -177,9 +189,14 @@ namespace RoboBackups.Controls
                             ComboTargetFolder.Items.Add(dir);
                             if (string.Compare(dir.FullName, backupPath, StringComparison.OrdinalIgnoreCase) == 0)
                             {
+                                found = true;
                                 ComboTargetFolder.SelectedItem = dir;
                             }
                         }
+                    }
+                    if (!found)
+                    {
+                        ComboTargetFolder.Text = backupPath;
                     }
                 }
                 catch
@@ -191,6 +208,10 @@ namespace RoboBackups.Controls
 
         private void ComboTargetFolder_SelectionChanged(object sender, SelectionChangedEventArgs e)
         {
+            if (!initialized)
+            {
+                return;
+            }
             if (e.AddedItems != null && e.AddedItems.Count > 0)
             {
                 DirectoryInfo dir = e.AddedItems[0] as DirectoryInfo;

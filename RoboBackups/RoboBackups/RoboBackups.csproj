@@ -30,7 +30,7 @@
     <SupportUrl>https://github.com/clovett/RoboBackups</SupportUrl>
     <ProductName>RoboBackups</ProductName>
     <PublisherName>Lovett Software</PublisherName>
-    <ApplicationRevision>7</ApplicationRevision>
+    <ApplicationRevision>8</ApplicationRevision>
     <ApplicationVersion>1.0.0.%2a</ApplicationVersion>
     <UseApplicationTrust>false</UseApplicationTrust>
     <PublishWizardCompleted>true</PublishWizardCompleted>

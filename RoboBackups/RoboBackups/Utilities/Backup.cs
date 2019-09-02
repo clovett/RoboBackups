@@ -51,11 +51,11 @@ namespace RoboBackups.Utilities
             var targetPath = Settings.Instance.BackupPath;
             if (string.IsNullOrEmpty(targetPath))
             {
-                throw new BackupException(BackupResult.ConfigError, "Missing target path");
+                throw new BackupException(BackupResult.ConfigError, "Missing target path - please use Settings button to setup your backup");
             }
             if (!Directory.Exists(targetPath))
             {
-                throw new BackupException(BackupResult.ConfigError, "Target path not found");
+                Directory.CreateDirectory(targetPath);
             }
             var realItems = (from folder in model.Items where folder.Path != SourceFolder.NewPath select folder);
             if (realItems.Count() == 0)
