@@ -57,6 +57,16 @@ namespace RoboBackups.Controls
                 try
                 {
                     string path = ComboTargetFolder.Text;
+                    string root = Path.GetPathRoot(path);
+                    if (!root.Contains(":"))
+                    {
+                        // has no drive so grab the drive from current backup path
+                        if (!string.IsNullOrEmpty(Settings.Instance.BackupPath))
+                        {
+                            path = Path.Combine(Path.GetPathRoot(Settings.Instance.BackupPath), path);
+                        }
+                    }
+                    
                     if (!System.IO.Directory.Exists(path))
                     {
                         if (MessageBox.Show("Folder '" + path + "' does not exist, do you want to create it?", "Create new folder", MessageBoxButton.YesNo, MessageBoxImage.Question) == MessageBoxResult.Yes)
