@@ -38,6 +38,20 @@ namespace RoboBackups.Controls
             initialized = true;
         }
 
+        private HashSet<string> GetSourceDrives()
+        {
+            HashSet<string> result = new HashSet<string>();
+            foreach (var item in sourceModel.Items)
+            {
+                if (item.Path != "<add folder>")
+                {
+                    string sourceDrive = System.IO.Path.GetPathRoot(item.Path.ToLowerInvariant());
+                    result.Add(sourceDrive);
+                }
+            }
+            return result;
+        }
+
         private void ComboTargetFolder_PreviewKeyDown(object sender, System.Windows.Input.KeyEventArgs e)
         {
             if (e.Key == System.Windows.Input.Key.Enter)
@@ -125,8 +139,13 @@ namespace RoboBackups.Controls
             var backupDrive = GetCurrentBackupDrive();
             DriveItem biggest = null;
             ComboTargetDrive.Items.Clear();
+            var sourceDrives = GetSourceDrives();
             foreach (var drive in DriveInfo.GetDrives())
             {
+                if (sourceDrives.Contains(drive.Name.ToLowerInvariant()))
+                {
+                    continue; // don't allow backing up to a source drive.
+                }
                 var item = new DriveItem(drive);
                 ComboTargetDrive.Items.Add(item);
                 if (string.Compare(drive.Name, backupDrive, StringComparison.OrdinalIgnoreCase) == 0)
