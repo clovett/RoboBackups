@@ -6,6 +6,7 @@ using System.Collections.Specialized;
 using System.ComponentModel;
 using System.IO;
 using System.Linq;
+using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
@@ -229,6 +230,7 @@ namespace RoboBackups
         Backup backup;
         Brush defaultButtonBrush;
         CancellationTokenSource cancel;
+        ErrorLog _errors;
 
         private void StopBackup()
         {
@@ -260,6 +262,16 @@ namespace RoboBackups
             if (_log != null)
             {
                 _log.OnUpdate();
+                if (_errors != null)
+                {
+                    string errors = _errors.ToString();
+                    _log.WriteErrors(errors.Split('\n'));
+                    _errors = null;
+                }
+
+                _log.WriteLine("===========================================================");
+                _log.WriteLine("BACKUP COMPLETE ");
+                _log.WriteLine("===========================================================");
             }
         }
 
@@ -317,16 +329,18 @@ namespace RoboBackups
         {
             backup = new Backup();
             var log = new FlowDocumentLog(ConsoleTextBox);
+            this._errors = new ErrorLog();
             this._log = log;
             this.cancel = new CancellationTokenSource();
             Task.Run(() =>
             {
                 try
                 {
-                    backup.Run(log, cancel);
+                    backup.Run(log, this._errors, cancel);
                 }
                 catch (Exception ex)
                 {
+                    backup.Error = ex.Message;
                     backup.Complete = true;
                     log.WriteLine(ex.Message);
                 }
@@ -336,9 +350,6 @@ namespace RoboBackups
                     UiDispatcher.RunOnUIThread(ShowCancelShutdown);
                 }
 
-                log.WriteLine("===========================================================");
-                log.WriteLine("BACKUP COMPLETE ");
-                log.WriteLine("===========================================================");
                 UiDispatcher.RunOnUIThread(StopBackup);
             });
         }
@@ -379,6 +390,21 @@ namespace RoboBackups
             }
             StopBackup();
             base.OnClosing(e);
+        }
+
+        class ErrorLog : BackupLog
+        {
+            StringBuilder text = new StringBuilder();
+
+            public override void WriteLine(string message)
+            {
+                text.AppendLine(message);
+            }
+
+            public override string ToString()
+            {
+                return text.ToString();
+            }
         }
 
         FlowDocumentLog _log;
@@ -429,33 +455,41 @@ namespace RoboBackups
                 }
                 if (toUpdate != null)
                 {
-                    bool scrollToEnd = true;
-                    var ptr = box.Selection.End;
-                    var end = box.Document.ContentEnd;
-                    if (ptr.GetOffsetToPosition(end) > 10)
-                    {
-                        scrollToEnd = false;
-                    }
-
-                    foreach (string line in toUpdate)
-                    {
-                        if (doc.Blocks.Count == 0)
-                        {
-                            Paragraph p = new Paragraph();
-                            doc.Blocks.Add(p);
-                        }
-                        Paragraph lines = (Paragraph)doc.Blocks.FirstOrDefault();
-                        lines.Inlines.Add(new Run() { Text = line });
-                        lines.Inlines.Add(new LineBreak());
-                    }
-
-                    if (scrollToEnd)
-                    {
-                        box.Selection.Select(doc.ContentEnd, doc.ContentEnd);
-                        box.ScrollToEnd();
-                    }
+                    AppendLines(toUpdate);
                 }
                 box.Dispatcher.BeginInvoke(new Action(OnUiUpdated), System.Windows.Threading.DispatcherPriority.ContextIdle);
+            }
+
+            public void AppendLines(string[] lines, Brush foreground = null)
+            {
+                bool scrollToEnd = true;
+                var ptr = box.Selection.End;
+                var end = box.Document.ContentEnd;
+                if (ptr.GetOffsetToPosition(end) > 10)
+                {
+                    scrollToEnd = false;
+                }
+
+                foreach (string line in lines)
+                {
+                    if (doc.Blocks.Count == 0)
+                    {
+                        doc.Blocks.Add(new Paragraph());
+                    }
+                    Paragraph p = (Paragraph)doc.Blocks.FirstOrDefault();
+                    var run = new Run() { Text = line };
+                    if (foreground != null) {
+                        run.Foreground = foreground;
+                    }
+                    p.Inlines.Add(run);
+                    p.Inlines.Add(new LineBreak());
+                }
+
+                if (scrollToEnd)
+                {
+                    box.Selection.Select(doc.ContentEnd, doc.ContentEnd);
+                    box.ScrollToEnd();
+                }
             }
 
             void OnUiUpdated()
@@ -463,6 +497,10 @@ namespace RoboBackups
                 actionPending = false;
             }
 
+            internal void WriteErrors(string[] errors)
+            {
+                AppendLines(errors, Brushes.Red);
+            }
         }
 
         private void OnCancelShutdown(object sender, RoutedEventArgs e)

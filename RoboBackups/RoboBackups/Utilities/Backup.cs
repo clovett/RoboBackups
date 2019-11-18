@@ -36,15 +36,20 @@ namespace RoboBackups.Utilities
     class Backup
     {
         BackupLog log;
+        BackupLog errorLog;
         CancellationTokenSource cancellation;
         bool complete;
         Process process;
 
         public bool Complete { get => complete; set => complete = value; }
 
-        public void Run(BackupLog log, CancellationTokenSource cancellation)
+        public string Error { get; set; }
+
+        public void Run(BackupLog log, BackupLog errorLog, CancellationTokenSource cancellation)
         {
+            this.Error = null;
             this.log = log;
+            this.errorLog = errorLog;
             this.cancellation = cancellation;
 
             var model = Settings.Instance.Model;
@@ -91,7 +96,7 @@ namespace RoboBackups.Utilities
                 Directory.CreateDirectory(target);
             }
             System.Diagnostics.ProcessStartInfo info = new System.Diagnostics.ProcessStartInfo(robocopy,
-                string.Format("{0} {1} /S /NP /XA:HS /R:3 /W:10 /NFL", sourcePath, target));
+                string.Format("\"{0}\" \"{1}\" /S /NP /XA:HS /R:3 /W:10 /NFL", sourcePath, target));
             info.CreateNoWindow = true;
             info.RedirectStandardError = true;
             info.RedirectStandardOutput = true;
@@ -115,13 +120,17 @@ namespace RoboBackups.Utilities
                 if (process.WaitForExit(1000))
                 {
                     complete = true;
+                    lock (this.log)
+                    {
+                        this.log.WriteLine(string.Format("Robocopy returned {0}", process.ExitCode));
+                    }
                     break;
                 }
             }
             if (cancellation.IsCancellationRequested && !complete)
             {
                 complete = true;
-                process.Kill();
+                process.Kill();                
                 throw new OperationCanceledException("Backup was cancelled.");
             }
         }
@@ -133,9 +142,19 @@ namespace RoboBackups.Utilities
                 while (!complete)
                 {
                     string line = reader.ReadLine();
+                    if (line == null)
+                    {
+                        return;
+                    }
                     lock (this.log)
                     {
                         this.log.WriteLine(line);
+                    }
+                    if (line.Contains(" ERROR "))
+                    {
+                        lock (this.errorLog) {
+                            this.errorLog.WriteLine(line);
+                        }
                     }
                 }
             }
