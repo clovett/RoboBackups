@@ -25,7 +25,8 @@ namespace RoboBackups.Utilities
         Point windowLocation;
         Size windowSize;
         AppTheme theme = AppTheme.Dark;
-        SourceFolderViewModel model = new SourceFolderViewModel();
+        TargetFolderModel targets = new TargetFolderModel();
+        SourceFolderModel model = new SourceFolderModel();
 
         static Settings _instance;
 
@@ -120,8 +121,24 @@ namespace RoboBackups.Utilities
                 }
             }
         }
+        
+        public TargetFolderModel Targets
+        {
+            get
+            {
+                return this.targets;
+            }
+            set
+            {
+                if (this.targets != value)
+                {
+                    this.targets = value;
+                    OnPropertyChanged("Targets");
+                }
+            }
+        }
 
-        public SourceFolderViewModel Model
+        public SourceFolderModel Model
         {
             get
             {

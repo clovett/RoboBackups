@@ -80,7 +80,7 @@ namespace RoboBackups.Controls
                         string backupPath = Settings.Instance.BackupPath;
                         if (string.IsNullOrEmpty(backupPath) && ComboTargetDrive.SelectedItem != null)
                         {
-                            backupPath = ((DriveItem)ComboTargetDrive.SelectedItem).DriveInfo.Name;
+                            backupPath = ((DriveItem)ComboTargetDrive.SelectedItem).Name;
                         }
                         if (!string.IsNullOrEmpty(backupPath))
                         {
@@ -116,7 +116,7 @@ namespace RoboBackups.Controls
             Settings.Instance.BackupPath = path;
         }
 
-        SourceFolderViewModel sourceModel;
+        SourceFolderModel sourceModel;
 
         string GetCurrentBackupDrive()
         {
@@ -137,6 +137,7 @@ namespace RoboBackups.Controls
         void UpdateDriveSelection()
         { 
             var backupDrive = GetCurrentBackupDrive();
+            bool found = false;
             DriveItem biggest = null;
             ComboTargetDrive.Items.Clear();
             var sourceDrives = GetSourceDrives();
@@ -150,12 +151,20 @@ namespace RoboBackups.Controls
                 ComboTargetDrive.Items.Add(item);
                 if (string.Compare(drive.Name, backupDrive, StringComparison.OrdinalIgnoreCase) == 0)
                 {
+                    found = true;
                     ComboTargetDrive.SelectedItem = item;
                 }
                 if (biggest == null || item.TotalFreeSpace > biggest.TotalFreeSpace)
                 {
                     biggest = item;
                 }
+            }
+
+            if (!found)
+            {
+                var item = new DriveItem(backupDrive, backupDrive, "drive is offline");
+                ComboTargetDrive.Items.Add(item);
+                ComboTargetDrive.SelectedItem = item;
             }
 
             if (ComboTargetDrive.SelectedItem == null)
@@ -179,15 +188,11 @@ namespace RoboBackups.Controls
 
         private void ComboTargetDrive_SelectionChanged(object sender, SelectionChangedEventArgs e)
         {
-            if (!initialized)
-            {
-                return;
-            }
             if (e.AddedItems != null && e.AddedItems.Count > 0)
             {
                 DriveItem item = e.AddedItems[0] as DriveItem;
                 var backupDrive = GetCurrentBackupDrive();
-                if (string.Compare(item.DriveInfo.Name, backupDrive, StringComparison.OrdinalIgnoreCase) != 0)
+                if (string.Compare(item.Name, backupDrive, StringComparison.OrdinalIgnoreCase) != 0)
                 {
                     // user is picking new drive.
                     var root = System.IO.Path.GetPathRoot(Settings.Instance.BackupPath);
@@ -196,7 +201,7 @@ namespace RoboBackups.Controls
                     {
                         path = Settings.Instance.BackupPath.Substring(root.Length);
                     }
-                    SetBackupPath(System.IO.Path.Combine(item.DriveInfo.Name, path));
+                    SetBackupPath(System.IO.Path.Combine(item.Name, path));
                     ComboTargetFolder.Items.Clear();
                     ComboTargetFolder.Text = Settings.Instance.BackupPath;
                 }
@@ -217,7 +222,7 @@ namespace RoboBackups.Controls
                 try
                 {
                     ComboTargetFolder.Items.Clear();
-                    var rootDir = item.DriveInfo.RootDirectory;
+                    DirectoryInfo rootDir = new DirectoryInfo(item.RootDirectory);
                     ComboTargetFolder.Items.Add(rootDir);
                     bool found = false;
                     foreach (var dir in rootDir.GetDirectories())
@@ -300,53 +305,54 @@ namespace RoboBackups.Controls
     {
         public DriveItem(DriveInfo info)
         {
-            this.DriveInfo = info;
-        }
-
-        public long TotalFreeSpace
-        {
-            get
+            this.Name = info.Name;
+            try
             {
-                try
-                {
-                    return DriveInfo.TotalFreeSpace;
-                }
-                catch { }
-                return 0;
+                this.RootDirectory = info.RootDirectory.FullName;
+                this.VolumeLabel = info.VolumeLabel;
+                this.TotalFreeSpace = info.TotalFreeSpace;
+            }
+            catch (Exception e)
+            {
+                VolumeLabel = e.Message;
             }
         }
 
-        public DriveInfo DriveInfo { get; set; }
+        public DriveItem(string name, string path, string volumeLabel, long totalFreeSpace = 0)
+        {
+            this.Name = name;
+            this.VolumeLabel = volumeLabel;
+            this.RootDirectory = path;
+            this.TotalFreeSpace = totalFreeSpace;
+        }
+
+        public string Name { get; set; }
+
+        public string VolumeLabel { get; set; }
+
+        public long TotalFreeSpace { get; set; }
+
+        public string RootDirectory { get; internal set; }
 
         public override string ToString()
         {
-            string s = DriveInfo.ToString();
+            string s = this.Name;
             string connector = "\t";
-            try
+            if (!string.IsNullOrEmpty(this.VolumeLabel))
             {
-                if (!string.IsNullOrEmpty(DriveInfo.VolumeLabel))
-                {
-                    s += "\t" + DriveInfo.VolumeLabel;
-                    connector = ", ";
-                }
+                s += "\t" + this.VolumeLabel;
+                connector = ", ";
             }
-            catch
-            {
-            }
-            try
-            {
+            if (this.TotalFreeSpace > 0)
+            { 
                 s += connector + FormatDriveFreeSpace() + " free";
-            }
-            catch (Exception ex)
-            {
-                s += connector + ex.Message;
             }
             return s;
         }
 
         string FormatDriveFreeSpace()
         {
-            double kilobytes = DriveInfo.TotalFreeSpace / 1024.0;
+            double kilobytes = this.TotalFreeSpace / 1024.0;
             if (kilobytes > 1024)
             {
                 double megabytes = kilobytes / 1024.0;

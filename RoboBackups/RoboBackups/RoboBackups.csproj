@@ -30,8 +30,8 @@
     <SupportUrl>https://github.com/clovett/RoboBackups</SupportUrl>
     <ProductName>RoboBackups</ProductName>
     <PublisherName>Lovett Software</PublisherName>
-    <ApplicationRevision>11</ApplicationRevision>
-    <ApplicationVersion>1.0.0.%2a</ApplicationVersion>
+    <ApplicationRevision>1</ApplicationRevision>
+    <ApplicationVersion>1.0.1.%2a</ApplicationVersion>
     <UseApplicationTrust>false</UseApplicationTrust>
     <PublishWizardCompleted>true</PublishWizardCompleted>
     <BootstrapperEnabled>true</BootstrapperEnabled>
@@ -113,7 +113,7 @@
     <Compile Include="Controls\MessageBoxEx.xaml.cs">
       <DependentUpon>MessageBoxEx.xaml</DependentUpon>
     </Compile>
-    <Compile Include="Controls\SourceFolderViewModel.cs" />
+    <Compile Include="Controls\SourceFolderModel.cs" />
     <Compile Include="Utilities\Backup.cs" />
     <Compile Include="Utilities\DelayedAction.cs" />
     <Compile Include="Utilities\HlsColor.cs" />

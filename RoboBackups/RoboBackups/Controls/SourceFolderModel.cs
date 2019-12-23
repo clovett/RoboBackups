@@ -5,14 +5,74 @@ using System.ComponentModel;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using System.Xml.Serialization;
 
 namespace RoboBackups.Controls
 {
-    public class SourceFolderViewModel
+    public class TargetFolderModel
+    {
+        private ObservableCollection<string> drives;
+        private ObservableCollection<string> items;
+
+        public TargetFolderModel()
+        {
+            drives = new ObservableCollection<string>();
+            items = new ObservableCollection<string>();
+        }
+
+        [XmlIgnore]
+        public ObservableCollection<string> TargetDrives { get { UpdateDrives();  return drives; } }
+
+        public ObservableCollection<string> TargetPaths { get { return items; } set { items = value; UpdateDrives(); } }
+
+        internal void AddTarget(string path)
+        {
+            string item = (from i in TargetPaths where string.Compare(i, path, StringComparison.OrdinalIgnoreCase) == 0 select i).FirstOrDefault();
+            if (item == null)
+            {
+                items.Add(path);
+            }
+            UpdateDrives();
+        }
+
+        internal void RemoveTarget(string path)
+        {
+            this.items.Remove(path);
+            UpdateDrives();
+        }
+
+        private void UpdateDrives()
+        {
+            HashSet<string> referencedDrives = new HashSet<string>(StringComparer.CurrentCultureIgnoreCase);
+            foreach (var path in this.TargetPaths)
+            {
+                var root = System.IO.Path.GetPathRoot(path);
+                referencedDrives.Add(root);
+            }
+            // remove drives that no longer exist
+            foreach (var item in drives.ToArray())
+            {
+                if (!referencedDrives.Contains(item))
+                {
+                    drives.Remove(item);
+                }
+            }
+            // add new referenced drives
+            foreach (var item in referencedDrives)
+            {
+                if (!drives.Contains(item))
+                {
+                    drives.Add(item);
+                }
+            }
+        }
+    }
+
+    public class SourceFolderModel
     {
         private ObservableCollection<SourceFolder> items;
 
-        public SourceFolderViewModel()
+        public SourceFolderModel()
         {
             items = new ObservableCollection<SourceFolder>();
         }
@@ -47,7 +107,6 @@ namespace RoboBackups.Controls
         public const string NewPath = "<add folder>";
 
         public SourceFolder() { }
-
 
         public string Path
         {

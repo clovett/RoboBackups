@@ -22,6 +22,12 @@ namespace RoboBackups
     /// </summary>
     public partial class MainWindow : Window
     {
+        Backup backup = new Backup();
+        Brush defaultButtonBrush;
+        CancellationTokenSource cancel;
+        ErrorLog _errors;
+        FlowDocumentLog _log;
+        CancellationTokenSource monitorDrivesCanellation;
         DelayedActions delayedActions = new DelayedActions();
 
         public MainWindow()
@@ -37,6 +43,7 @@ namespace RoboBackups
 
             Settings.Instance.PropertyChanged += OnSettingsPropertyChanged;
             Settings.Instance.Model.Items.CollectionChanged += OnModelItemsChanged;
+            Settings.Instance.Targets.TargetPaths.CollectionChanged += OnTargetItemsChanged;
             foreach (SourceFolder f in Settings.Instance.Model.Items)
             {
                 f.PropertyChanged += OnSourceFolderPropertyChanged;
@@ -53,6 +60,35 @@ namespace RoboBackups
             App.Current.DispatcherUnhandledException += new DispatcherUnhandledExceptionEventHandler(OnDispatcherUnhandledException);
             TaskScheduler.UnobservedTaskException += TaskScheduler_UnobservedTaskException;
 
+            this._log = new FlowDocumentLog(ConsoleTextBox);
+
+            backup.AvailableBackupDrives.CollectionChanged += AvailableBackupDrives_CollectionChanged;
+            this.monitorDrivesCanellation = new CancellationTokenSource();
+            Task.Run(new Action(() =>
+            {
+                backup.MonitorBackupDrives(this.monitorDrivesCanellation.Token);
+            }));
+        }
+
+        private void AvailableBackupDrives_CollectionChanged(object sender, NotifyCollectionChangedEventArgs e)
+        {
+            this.Dispatcher.BeginInvoke(new Action(() =>
+            {
+                if (e.OldItems != null)
+                {
+                    foreach (string item in e.OldItems)
+                    {
+                        this._log.WriteLine("Removed backup drive: " + item);
+                    }
+                }
+                if (e.NewItems != null)
+                {
+                    foreach (string item in e.NewItems)
+                    {
+                        this._log.WriteLine("Found backup drive: " + item);
+                    }
+                }
+            }));
         }
 
         private void TaskScheduler_UnobservedTaskException(object sender, UnobservedTaskExceptionEventArgs e)
@@ -118,6 +154,7 @@ namespace RoboBackups
         // stop re-entrancy
         bool handlingException;
 
+
         void OnDispatcherUnhandledException(object sender, DispatcherUnhandledExceptionEventArgs e)
         {
             if (handlingException)
@@ -141,6 +178,10 @@ namespace RoboBackups
             }
         }
 
+        private void OnTargetItemsChanged(object sender, NotifyCollectionChangedEventArgs e)
+        {
+            DelayedSaveSettings();
+        }
 
         private void OnModelItemsChanged(object sender, NotifyCollectionChangedEventArgs e)
         {
@@ -227,12 +268,7 @@ namespace RoboBackups
             settings.WindowSize = bounds.Size;
         }
 
-        Backup backup;
-        Brush defaultButtonBrush;
-        CancellationTokenSource cancel;
-        ErrorLog _errors;
-
-        private void StopBackup()
+        private void UpdateUIForNoBackupRunning()
         {
             if (cancel != null && !cancel.IsCancellationRequested)
             {
@@ -259,6 +295,12 @@ namespace RoboBackups
             }
             ButtonBackup.IsEnabled = true;
             ButtonShutdownBackup.IsEnabled = true;
+        }
+
+        private void OnBackupComplete()
+        {
+            UpdateUIForNoBackupRunning();
+
             if (_log != null)
             {
                 _log.OnUpdate();
@@ -270,8 +312,16 @@ namespace RoboBackups
                 }
 
                 _log.WriteLine("===========================================================");
-                _log.WriteLine("BACKUP COMPLETE ");
+                if (backup != null && backup.Error != null)
+                {
+                    _log.WriteLine("BACKUP FAILED ");
+                }
+                else
+                {
+                    _log.WriteLine("BACKUP COMPLETE ");
+                }
                 _log.WriteLine("===========================================================");
+                _log.OnUpdate();
             }
         }
 
@@ -280,12 +330,12 @@ namespace RoboBackups
             Button button = (Button)sender;
             if (button.Tag != null)
             {
-                StopBackup();
+                UpdateUIForNoBackupRunning();
             }
             else
             {
                 LogDocument.Blocks.Clear();
-                StopBackup();
+                UpdateUIForNoBackupRunning();
                 ButtonShutdownBackup.IsEnabled = false;
                 ButtonBackup.Tag = ButtonBackup.Content;
                 ButtonBackup.Content = "Cancel";
@@ -305,12 +355,12 @@ namespace RoboBackups
             Button button = (Button)sender;
             if (button.Tag != null)
             {
-                StopBackup();
+                UpdateUIForNoBackupRunning();
             }
             else
             {
                 LogDocument.Blocks.Clear();
-                StopBackup();
+                UpdateUIForNoBackupRunning();
                 ButtonBackup.IsEnabled = false;
                 ButtonShutdownBackup.Tag = ButtonShutdownBackup.Content;
                 ButtonShutdownBackup.Content = "Cancel";
@@ -327,22 +377,20 @@ namespace RoboBackups
 
         void Backup(bool shutdown)
         {
-            backup = new Backup();
-            var log = new FlowDocumentLog(ConsoleTextBox);
+            ConsoleTextBox.Document.Blocks.Clear();
             this._errors = new ErrorLog();
-            this._log = log;
             this.cancel = new CancellationTokenSource();
             Task.Run(() =>
             {
                 try
                 {
-                    backup.Run(log, this._errors, cancel);
+                    backup.Run(this._log, this._errors, cancel);
                 }
                 catch (Exception ex)
                 {
                     backup.Error = ex.Message;
                     backup.Complete = true;
-                    log.WriteLine(ex.Message);
+                    this._log.WriteLine(ex.Message);
                 }
                 if (shutdown)
                 {
@@ -350,7 +398,7 @@ namespace RoboBackups
                     UiDispatcher.RunOnUIThread(ShowCancelShutdown);
                 }
 
-                UiDispatcher.RunOnUIThread(StopBackup);
+                UiDispatcher.RunOnUIThread(OnBackupComplete);
             });
         }
 
@@ -388,7 +436,8 @@ namespace RoboBackups
                     return;
                 }
             }
-            StopBackup();
+            UpdateUIForNoBackupRunning();
+            monitorDrivesCanellation.Cancel();
             base.OnClosing(e);
         }
 
@@ -407,8 +456,6 @@ namespace RoboBackups
             }
         }
 
-        FlowDocumentLog _log;
-
         class FlowDocumentLog : BackupLog
         {
             RichTextBox box;
@@ -416,7 +463,6 @@ namespace RoboBackups
             List<string> pending = new List<string>();
             DelayedActions delayedActions = new DelayedActions();
             bool actionPending;
-            bool uiUpdated;
 
             public FlowDocumentLog(RichTextBox box)
             {
@@ -444,6 +490,7 @@ namespace RoboBackups
 
             public void OnUpdate()
             {
+                actionPending = false;
                 string[] toUpdate = null;
                 lock (pending)
                 {
@@ -457,7 +504,6 @@ namespace RoboBackups
                 {
                     AppendLines(toUpdate);
                 }
-                box.Dispatcher.BeginInvoke(new Action(OnUiUpdated), System.Windows.Threading.DispatcherPriority.ContextIdle);
             }
 
             public void AppendLines(string[] lines, Brush foreground = null)
@@ -490,11 +536,6 @@ namespace RoboBackups
                     box.Selection.Select(doc.ContentEnd, doc.ContentEnd);
                     box.ScrollToEnd();
                 }
-            }
-
-            void OnUiUpdated()
-            {
-                actionPending = false;
             }
 
             internal void WriteErrors(string[] errors)

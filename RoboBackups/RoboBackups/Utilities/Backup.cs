@@ -7,6 +7,7 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Diagnostics;
+using System.Collections.ObjectModel;
 
 namespace RoboBackups.Utilities
 {
@@ -41,6 +42,11 @@ namespace RoboBackups.Utilities
         bool complete;
         Process process;
 
+        public Backup()
+        {
+            AvailableBackupDrives = new ObservableCollection<string>();
+        }
+
         public bool Complete { get => complete; set => complete = value; }
 
         public string Error { get; set; }
@@ -53,24 +59,88 @@ namespace RoboBackups.Utilities
             this.cancellation = cancellation;
 
             var model = Settings.Instance.Model;
-            var targetPath = Settings.Instance.BackupPath;
-            if (string.IsNullOrEmpty(targetPath))
+            if (string.IsNullOrEmpty(Settings.Instance.BackupPath))
             {
-                throw new BackupException(BackupResult.ConfigError, "Missing target path - please use Settings button to setup your backup");
+                throw new BackupException(BackupResult.ConfigError, "Missing target path - please use Settings button to setup your backup.");
             }
-            if (!Directory.Exists(targetPath))
+
+            // assume the BackupPath set via the AppSettings dialog is good to go as a backup path.
+            if (!string.IsNullOrEmpty(Settings.Instance.BackupPath))
             {
-                Directory.CreateDirectory(targetPath);
+                Settings.Instance.Targets.AddTarget(Settings.Instance.BackupPath);
             }
-            var realItems = (from folder in model.Items where folder.Path != SourceFolder.NewPath select folder);
-            if (realItems.Count() == 0)
+
+            if (AvailableBackupDrives.Count == 0)
             {
-                throw new BackupException(BackupResult.ConfigError, "No source folders configured");
+                throw new BackupException(BackupResult.ConfigError, 
+                    string.Format("Cannot find your target backup drive{0} {1}\nPlease use the Settings button to fix your backup location.", Settings.Instance.Targets.TargetDrives.Count > 1 ? "s":"",
+                    string.Join(", ", Settings.Instance.Targets.TargetDrives)));
             }
-            
-            foreach (var item in realItems)
+
+            foreach (var targetPath in Settings.Instance.Targets.TargetPaths)
             {
-                Robocopy(item.Path, targetPath);
+                var targetDrive = Path.GetPathRoot(targetPath);
+                if (AvailableBackupDrives.Contains(targetDrive))
+                {
+                    if (!Directory.Exists(targetPath))
+                    {
+                        Directory.CreateDirectory(targetPath);
+                    }
+                    var realItems = (from folder in model.Items where folder.Path != SourceFolder.NewPath select folder);
+                    if (realItems.Count() == 0)
+                    {
+                        throw new BackupException(BackupResult.ConfigError, "No source folders configured");
+                    }
+
+                    foreach (var item in realItems)
+                    {
+                        Robocopy(item.Path, targetPath);
+                    }
+                }
+            }
+
+        }
+
+        public ObservableCollection<string> AvailableBackupDrives { get; set; }
+
+        // Background task that runs periodically
+        internal async void MonitorBackupDrives(CancellationToken cancellation)
+        {
+            while (!cancellation.IsCancellationRequested)
+            {
+                HashSet<string> targetDrives = new HashSet<string>(Settings.Instance.Targets.TargetDrives, StringComparer.CurrentCultureIgnoreCase);
+                HashSet<string> availableDrives = new HashSet<string>(StringComparer.CurrentCultureIgnoreCase);
+                foreach (var drive in DriveInfo.GetDrives())
+                {
+                    var root = drive.RootDirectory.Name;
+                    if (targetDrives.Contains(root))
+                    { 
+                        availableDrives.Add(root);
+                    }
+                }
+
+                lock (AvailableBackupDrives)
+                {
+                    // remove drives that are not currently available.
+                    foreach (var item in AvailableBackupDrives.ToArray())
+                    {
+                        if (!availableDrives.Contains(item))
+                        {
+                            AvailableBackupDrives.Remove(item);
+                        }
+                    }
+
+                    // add drives that are now available
+                    foreach (var item in availableDrives)
+                    {
+                        if (!AvailableBackupDrives.Contains(item))
+                        {
+                            AvailableBackupDrives.Add(item);
+                        }
+                    }
+                }
+
+                await Task.Delay(2000);
             }
         }
 
