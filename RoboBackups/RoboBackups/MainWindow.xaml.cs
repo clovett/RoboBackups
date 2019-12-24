@@ -68,6 +68,11 @@ namespace RoboBackups
             {
                 backup.MonitorBackupDrives(this.monitorDrivesCanellation.Token);
             }));
+
+            if (Settings.Instance.Migrated)
+            {
+                this.DelayedSaveSettings();
+            }
         }
 
         private void AvailableBackupDrives_CollectionChanged(object sender, NotifyCollectionChangedEventArgs e)
@@ -85,7 +90,7 @@ namespace RoboBackups
                 {
                     foreach (string item in e.NewItems)
                     {
-                        this._log.WriteLine("Found backup drive: " + item);
+                        this._log.WriteLine("Found backup location: " + Settings.Instance.GetFullBackupPath(item));
                     }
                 }
             }));
@@ -389,6 +394,7 @@ namespace RoboBackups
                 catch (Exception ex)
                 {
                     backup.Error = ex.Message;
+                    backup.Running = false;
                     backup.Complete = true;
                     this._log.WriteLine(ex.Message);
                 }
@@ -428,7 +434,7 @@ namespace RoboBackups
 
         protected override void OnClosing(CancelEventArgs e)
         {
-            if (this.backup != null && !this.backup.Complete)
+            if (this.backup != null && this.backup.Running && !this.backup.Complete)
             {
                 if (MessageBoxEx.Show("Backup is running, do you want to stop the backup?", "Terminate backup", MessageBoxButton.YesNo, MessageBoxImage.Question) == MessageBoxResult.No)
                 {

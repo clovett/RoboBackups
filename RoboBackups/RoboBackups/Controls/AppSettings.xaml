@@ -7,6 +7,7 @@
              mc:Ignorable="d" 
              d:DesignHeight="500" d:DesignWidth="300">
     <UserControl.Resources>
+        <local:ComboBoxItemTemplateSelector x:Key="ComboBoxItemTemplateSelector"/>
         <local:BooleanVisibilityConverter x:Key="BooleanVisibilityConverter"/>
         <Style x:Key="CompactListStyle" TargetType="ListBoxItem">
             <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
@@ -16,23 +17,27 @@
         <DataTemplate x:Key="FolderItemTemplate">
             <Grid >
                 <local:EditableTextBlock Label="{Binding Path, Mode=TwoWay}"  Foreground="white"
-                                         TextBoxFocussed="OnLabelTextBoxFocussed"
-                                         KeyDown="OnLabelKeyDown"  Margin="0,0,0,4"/>
+                                         TextBoxFocussed="OnLabelTextBoxFocussed" Margin="0,0,0,4"/>
 
                 <local:CloseBox HorizontalAlignment="Right" Margin="4" Click="OnCloseClick"
                                 Visibility="{Binding IsSelected, Converter={StaticResource BooleanVisibilityConverter}}"/>
             </Grid>
         </DataTemplate>
+
     </UserControl.Resources>
-    <Grid Background="{StaticResource ControlBackgroundBrush}">
+    <Grid Background="{StaticResource ControlBackgroundBrush}" >
 
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="*"/>
             <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="*"/>
+            <ColumnDefinition Width="*"/>
+        </Grid.ColumnDefinitions>
 
-        <Grid Grid.Row="0"  Background="#007ACC">
+        <Grid Grid.Row="0"  Background="#007ACC" Grid.ColumnSpan="2">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="Auto"/>
                 <ColumnDefinition Width="*"/>
@@ -41,37 +46,62 @@
             <Label FontSize="18" Grid.Column="1" VerticalAlignment="Center">Settings</Label>
         </Grid>
 
-        <Grid Grid.Row="1" Margin="10">
+        <Grid Grid.Row="1" Margin="10" Grid.Column="0">
             <Grid.RowDefinitions>
                 <RowDefinition Height="Auto"/>
                 <RowDefinition Height="Auto"/>
-                <RowDefinition Height="Auto"/>
-                <RowDefinition Height="Auto"/>
-                <RowDefinition Height="Auto"/>
                 <RowDefinition Height="*"/>
-                <RowDefinition Height="Auto"/>
-                <RowDefinition Height="Auto"/>
             </Grid.RowDefinitions>
-            <Label>Select Backup Drive:</Label>
-            <ComboBox x:Name="ComboTargetDrive" Grid.Row="1">
-            </ComboBox>
 
-            <Label x:Name="PromptTargetFolder" Grid.Row="2">Select Backup Target Folder:</Label>
-            <ComboBox x:Name="ComboTargetFolder" Grid.Row="3" IsEditable="True">
-            </ComboBox>
-
-            <Label x:Name="PromptSourceFolders" Grid.Row="4">Select Folders to Backup:</Label>
-            <ListView x:Name="SourceFolders" Grid.Row="5" Focusable="True" SelectionMode="Single" 
+            <Label x:Name="PromptSourceFolders" Grid.Row="0" Grid.Column="1" FontSize="18" Foreground="#30AAFC">Select Folders to Backup:</Label>
+            <ListView x:Name="SourceFolders" Grid.Row="1" Focusable="True" SelectionMode="Single" 
                       ItemContainerStyle="{StaticResource CompactListStyle}"
                       ItemTemplate="{StaticResource FolderItemTemplate}" 
                       BorderThickness="0">
 
             </ListView>
 
-
-            <Border Grid.Row="7" Padding="2">
-                <TextBlock x:Name="StatusText" Text="" Foreground="Salmon" />
-            </Border>
         </Grid>
+        
+        <Grid Grid.Row="1" Margin="10" Grid.Column="1">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="*"/>
+            </Grid.RowDefinitions>
+
+            <Label FontSize="18" Foreground="#30AAFC" FontFamily="Segoe UI Symbol">&#xe0ae; Select Backup Drive:</Label>
+            <ComboBox x:Name="ComboTargetDrive" Grid.Row="1"
+                    ItemContainerStyle="{StaticResource CompactListStyle}">
+                <ComboBox.ItemTemplateSelector>
+                    <local:ComboBoxItemTemplateSelector>
+                        <local:ComboBoxItemTemplateSelector.SelectedTemplate>
+                            <DataTemplate>
+                                <TextBlock Text="{Binding DisplayLabel}"/>
+                            </DataTemplate>
+                        </local:ComboBoxItemTemplateSelector.SelectedTemplate>
+                        <local:ComboBoxItemTemplateSelector.DropDownTemplate>
+                            <DataTemplate>
+                                <Grid HorizontalAlignment="Stretch">
+                                    <TextBlock Text="{Binding DisplayLabel}" Margin="0,0,0,4"/>
+                                    <local:CloseBox HorizontalAlignment="Right" Margin="4" Click="OnCloseClick"
+                                Visibility="{Binding IsSelected, Converter={StaticResource BooleanVisibilityConverter}}"/>
+                                </Grid>
+                            </DataTemplate>
+                        </local:ComboBoxItemTemplateSelector.DropDownTemplate>
+                    </local:ComboBoxItemTemplateSelector>
+                </ComboBox.ItemTemplateSelector>
+            </ComboBox>
+
+            <Label x:Name="PromptTargetFolder" Grid.Row="2" Grid.Column="0" >Select Backup Target Folder:</Label>
+            <ComboBox x:Name="ComboTargetFolder" Grid.Row="3" IsEditable="True"  Grid.Column="0">
+            </ComboBox>
+
+        </Grid>
+        <Border Grid.Row="2" Padding="2" Grid.ColumnSpan="2">
+            <TextBlock x:Name="StatusText" Text="" Foreground="Salmon" />
+        </Border>
     </Grid>
 </UserControl>

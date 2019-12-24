@@ -18,7 +18,7 @@
             <ColumnDefinition Width="*"/>
         </Grid.ColumnDefinitions>
 
-        <Grid  Grid.ColumnSpan="2"  Style="{StaticResource AppBarGrid}" >
+        <Grid  Grid.ColumnSpan="2"  Style="{StaticResource AppBarGrid}">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="Auto"/>
                 <ColumnDefinition Width="Auto"/>

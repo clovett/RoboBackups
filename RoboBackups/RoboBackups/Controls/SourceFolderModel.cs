@@ -27,6 +27,10 @@ namespace RoboBackups.Controls
 
         internal void AddTarget(string path)
         {
+            if (string.IsNullOrEmpty(path))
+            {
+                return;
+            }
             string item = (from i in TargetPaths where string.Compare(i, path, StringComparison.OrdinalIgnoreCase) == 0 select i).FirstOrDefault();
             if (item == null)
             {
@@ -65,6 +69,25 @@ namespace RoboBackups.Controls
                     drives.Add(item);
                 }
             }
+        }
+
+        internal List<string> RemoveTargetDrive(string drive)
+        {
+            List<string> removed = new List<string>();
+            foreach (var item in items.ToArray())
+            {
+                var root = System.IO.Path.GetPathRoot(item);
+                if (string.Compare(drive, root, StringComparison.OrdinalIgnoreCase) == 0)
+                {
+                    items.Remove(item);
+                    removed.Add(item);
+                }
+            }
+            if (removed.Count > 0)
+            {
+                UpdateDrives();
+            }
+            return removed;
         }
     }
 

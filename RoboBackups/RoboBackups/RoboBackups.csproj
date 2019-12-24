@@ -30,7 +30,7 @@
     <SupportUrl>https://github.com/clovett/RoboBackups</SupportUrl>
     <ProductName>RoboBackups</ProductName>
     <PublisherName>Lovett Software</PublisherName>
-    <ApplicationRevision>1</ApplicationRevision>
+    <ApplicationRevision>2</ApplicationRevision>
     <ApplicationVersion>1.0.1.%2a</ApplicationVersion>
     <UseApplicationTrust>false</UseApplicationTrust>
     <PublishWizardCompleted>true</PublishWizardCompleted>
@@ -106,6 +106,7 @@
     <Compile Include="Controls\CloseBox.xaml.cs">
       <DependentUpon>CloseBox.xaml</DependentUpon>
     </Compile>
+    <Compile Include="Controls\ComboBoxItemTemplateSelector.cs" />
     <Compile Include="Controls\CustomizableButton.cs" />
     <Compile Include="Controls\EditableTextBlock.xaml.cs">
       <DependentUpon>EditableTextBlock.xaml</DependentUpon>

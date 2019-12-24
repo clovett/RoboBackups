@@ -41,18 +41,23 @@ namespace RoboBackups.Utilities
         CancellationTokenSource cancellation;
         bool complete;
         Process process;
+        bool running;
 
         public Backup()
         {
             AvailableBackupDrives = new ObservableCollection<string>();
         }
 
-        public bool Complete { get => complete; set => complete = value; }
+        public bool Running { get => running; set { running = false; } }
+
+        public bool Complete { get => complete; set { complete = value; } }
 
         public string Error { get; set; }
 
         public void Run(BackupLog log, BackupLog errorLog, CancellationTokenSource cancellation)
         {
+            this.complete = false;
+            this.running = true;
             this.Error = null;
             this.log = log;
             this.errorLog = errorLog;
@@ -64,17 +69,16 @@ namespace RoboBackups.Utilities
                 throw new BackupException(BackupResult.ConfigError, "Missing target path - please use Settings button to setup your backup.");
             }
 
-            // assume the BackupPath set via the AppSettings dialog is good to go as a backup path.
-            if (!string.IsNullOrEmpty(Settings.Instance.BackupPath))
-            {
-                Settings.Instance.Targets.AddTarget(Settings.Instance.BackupPath);
-            }
-
             if (AvailableBackupDrives.Count == 0)
             {
-                throw new BackupException(BackupResult.ConfigError, 
-                    string.Format("Cannot find your target backup drive{0} {1}\nPlease use the Settings button to fix your backup location.", Settings.Instance.Targets.TargetDrives.Count > 1 ? "s":"",
+                UpdateAvailableDrives(); // Maybe background thread was too slow?
+
+                if (AvailableBackupDrives.Count == 0)
+                {
+                    throw new BackupException(BackupResult.ConfigError,
+                    string.Format("Cannot find your target backup drive{0} {1}\nPlease use the Settings button to fix your backup location.", Settings.Instance.Targets.TargetDrives.Count > 1 ? "s" : "",
                     string.Join(", ", Settings.Instance.Targets.TargetDrives)));
+                }
             }
 
             foreach (var targetPath in Settings.Instance.Targets.TargetPaths)
@@ -98,7 +102,6 @@ namespace RoboBackups.Utilities
                     }
                 }
             }
-
         }
 
         public ObservableCollection<string> AvailableBackupDrives { get; set; }
@@ -108,39 +111,48 @@ namespace RoboBackups.Utilities
         {
             while (!cancellation.IsCancellationRequested)
             {
-                HashSet<string> targetDrives = new HashSet<string>(Settings.Instance.Targets.TargetDrives, StringComparer.CurrentCultureIgnoreCase);
-                HashSet<string> availableDrives = new HashSet<string>(StringComparer.CurrentCultureIgnoreCase);
-                foreach (var drive in DriveInfo.GetDrives())
-                {
-                    var root = drive.RootDirectory.Name;
-                    if (targetDrives.Contains(root))
-                    { 
-                        availableDrives.Add(root);
-                    }
-                }
-
-                lock (AvailableBackupDrives)
-                {
-                    // remove drives that are not currently available.
-                    foreach (var item in AvailableBackupDrives.ToArray())
-                    {
-                        if (!availableDrives.Contains(item))
-                        {
-                            AvailableBackupDrives.Remove(item);
-                        }
-                    }
-
-                    // add drives that are now available
-                    foreach (var item in availableDrives)
-                    {
-                        if (!AvailableBackupDrives.Contains(item))
-                        {
-                            AvailableBackupDrives.Add(item);
-                        }
-                    }
-                }
+                UpdateAvailableDrives();
 
                 await Task.Delay(2000);
+            }
+        }
+
+        void UpdateAvailableDrives()
+        { 
+            HashSet<string> targetDrives = new HashSet<string>(Settings.Instance.Targets.TargetDrives, StringComparer.CurrentCultureIgnoreCase);
+            if (!string.IsNullOrEmpty(Settings.Instance.SelectedBackupDrive))
+            {
+                targetDrives.Add(Settings.Instance.SelectedBackupDrive);
+            }
+            HashSet<string> availableDrives = new HashSet<string>(StringComparer.CurrentCultureIgnoreCase);
+            foreach (var drive in DriveInfo.GetDrives())
+            {
+                var root = drive.RootDirectory.Name;
+                if (targetDrives.Contains(root))
+                { 
+                    availableDrives.Add(root);
+                }
+            }
+
+            lock (AvailableBackupDrives)
+            {
+                // remove drives that are not currently available.
+                foreach (var item in AvailableBackupDrives.ToArray())
+                {
+                    if (!availableDrives.Contains(item))
+                    {
+                        AvailableBackupDrives.Remove(item);
+                    }
+                }
+
+                // add drives that are now available
+                foreach (var item in availableDrives)
+                {
+                    if (!AvailableBackupDrives.Contains(item))
+                    {
+                        AvailableBackupDrives.Add(item);
+                    }
+                }
             }
         }
 

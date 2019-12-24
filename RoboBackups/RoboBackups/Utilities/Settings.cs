@@ -9,6 +9,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using System.Windows;
+using System.Xml.Serialization;
 
 namespace RoboBackups.Utilities
 {
@@ -21,6 +22,7 @@ namespace RoboBackups.Utilities
     public class Settings : INotifyPropertyChanged
     {
         const string SettingsFileName = "settings.xml";
+        string backupDrive;
         string backupPath;
         Point windowLocation;
         Size windowSize;
@@ -106,6 +108,22 @@ namespace RoboBackups.Utilities
             }
         }
 
+        public string SelectedBackupDrive
+        {
+            get
+            {
+                return this.backupDrive;
+            }
+            set
+            {
+                if (this.backupDrive != value)
+                {
+                    this.backupDrive = value;
+                    OnPropertyChanged("SelectedBackupDrive");
+                }
+            }
+        }
+
         public string BackupPath
         {
             get
@@ -114,6 +132,13 @@ namespace RoboBackups.Utilities
             }
             set
             {
+                if (value != null && System.IO.Path.IsPathRooted(value))
+                {
+                    SelectedBackupDrive = System.IO.Path.GetPathRoot(value);
+                    this.Targets.AddTarget(value);
+                    value = value.Substring(SelectedBackupDrive.Length);
+                    this.Migrated = true;
+                }
                 if (this.backupPath != value)
                 {
                     this.backupPath = value;
@@ -121,7 +146,20 @@ namespace RoboBackups.Utilities
                 }
             }
         }
-        
+
+        [XmlIgnore]
+        public bool Migrated { get; set; }
+
+        internal string GetFullBackupPath(string rootDirectory)
+        {
+            string path = this.backupPath;
+            if (!string.IsNullOrEmpty(path))
+            {
+                return System.IO.Path.Combine(rootDirectory, path);
+            }
+            return null;
+        }
+
         public TargetFolderModel Targets
         {
             get
@@ -205,7 +243,6 @@ namespace RoboBackups.Utilities
                 }
             }
         }
-
     }
 
 

@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Linq;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Diagnostics;
@@ -14,7 +15,8 @@ namespace RoboBackups.Controls
     /// </summary>
     public partial class AppSettings : UserControl
     {
-        bool initialized;
+        bool initialized; 
+        SourceFolderModel sourceModel;
 
         public AppSettings()
         {
@@ -73,18 +75,17 @@ namespace RoboBackups.Controls
                 try
                 {
                     string path = ComboTargetFolder.Text;
-                    string root = Path.GetPathRoot(path);
-                    if (!root.Contains(":"))
+                    if (!Path.IsPathRooted(path))
                     {
                         // has no drive so grab the drive from current backup path
-                        string backupPath = Settings.Instance.BackupPath;
-                        if (string.IsNullOrEmpty(backupPath) && ComboTargetDrive.SelectedItem != null)
+                        string root = null;
+                        if (ComboTargetDrive.SelectedItem != null)
                         {
-                            backupPath = ((DriveItem)ComboTargetDrive.SelectedItem).Name;
+                            root = ((DriveItem)ComboTargetDrive.SelectedItem).RootDirectory;
                         }
-                        if (!string.IsNullOrEmpty(backupPath))
+                        if (!string.IsNullOrEmpty(root))
                         {
-                            path = Path.Combine(Path.GetPathRoot(backupPath), path);
+                            path = Path.Combine(root, path);
                         }
                     }
                     
@@ -115,29 +116,16 @@ namespace RoboBackups.Controls
             Debug.WriteLine("Setting backup path: " + path);
             Settings.Instance.BackupPath = path;
         }
-
-        SourceFolderModel sourceModel;
-
-        string GetCurrentBackupDrive()
-        {
-            string backupPath = Settings.Instance.BackupPath;
-            string backupDrive = null;
-            if (!string.IsNullOrEmpty(backupPath))
-            {
-                backupDrive = System.IO.Path.GetPathRoot(backupPath);
-            }
-            return backupDrive;
-        }
-
+        
         private void ComboTargetDrive_DropDownOpened(object sender, EventArgs e)
         {
             UpdateDriveSelection();
         }
 
         void UpdateDriveSelection()
-        { 
-            var backupDrive = GetCurrentBackupDrive();
-            bool found = false;
+        {
+            var backupDrive = Settings.Instance.SelectedBackupDrive;
+            var backupDrives = new HashSet<string>(Settings.Instance.Targets.TargetDrives, StringComparer.CurrentCultureIgnoreCase);
             DriveItem biggest = null;
             ComboTargetDrive.Items.Clear();
             var sourceDrives = GetSourceDrives();
@@ -149,10 +137,14 @@ namespace RoboBackups.Controls
                 }
                 var item = new DriveItem(drive);
                 ComboTargetDrive.Items.Add(item);
-                if (string.Compare(drive.Name, backupDrive, StringComparison.OrdinalIgnoreCase) == 0)
+                if (string.Compare(drive.Name, backupDrive, StringComparison.OrdinalIgnoreCase) == 0 && ComboTargetDrive.SelectedItem == null)
                 {
-                    found = true;
                     ComboTargetDrive.SelectedItem = item;
+                }
+                if (backupDrives.Contains(drive.RootDirectory.Name))
+                {
+                    item.IsSelected = true;
+                    backupDrives.Remove(drive.RootDirectory.Name);
                 }
                 if (biggest == null || item.TotalFreeSpace > biggest.TotalFreeSpace)
                 {
@@ -160,16 +152,15 @@ namespace RoboBackups.Controls
                 }
             }
 
-            if (!found)
+            foreach (var path in Settings.Instance.Targets.TargetPaths)
             {
-                var item = new DriveItem(backupDrive, backupDrive, "drive is offline");
-                ComboTargetDrive.Items.Add(item);
-                ComboTargetDrive.SelectedItem = item;
-            }
-
-            if (ComboTargetDrive.SelectedItem == null)
-            {
-                ComboTargetDrive.SelectedItem = biggest;
+                var drive = System.IO.Path.GetPathRoot(path);
+                if (backupDrives.Contains(drive))
+                {
+                    var item = new DriveItem(drive, drive, "drive is offline") { IsSelected = true };
+                    ComboTargetDrive.Items.Add(item);
+                    ComboTargetDrive.SelectedItem = item;
+                }
             }
         }
 
@@ -188,22 +179,22 @@ namespace RoboBackups.Controls
 
         private void ComboTargetDrive_SelectionChanged(object sender, SelectionChangedEventArgs e)
         {
+            if (!initialized)
+            {
+                return;
+            }
             if (e.AddedItems != null && e.AddedItems.Count > 0)
             {
                 DriveItem item = e.AddedItems[0] as DriveItem;
-                var backupDrive = GetCurrentBackupDrive();
+                var backupDrive = Settings.Instance.SelectedBackupDrive;
                 if (string.Compare(item.Name, backupDrive, StringComparison.OrdinalIgnoreCase) != 0)
                 {
-                    // user is picking new drive.
-                    var root = System.IO.Path.GetPathRoot(Settings.Instance.BackupPath);
-                    var path = "\\";
-                    if (Settings.Instance.BackupPath.Length > root.Length)
-                    {
-                        path = Settings.Instance.BackupPath.Substring(root.Length);
-                    }
-                    SetBackupPath(System.IO.Path.Combine(item.Name, path));
+                    // user is picking a new backup drive
+                    Settings.Instance.SelectedBackupDrive = item.RootDirectory;
                     ComboTargetFolder.Items.Clear();
-                    ComboTargetFolder.Text = Settings.Instance.BackupPath;
+                    var backupPath = Settings.Instance.BackupPath;
+                    ComboTargetFolder.Text = backupPath;
+                    Settings.Instance.Targets.AddTarget(Settings.Instance.GetFullBackupPath(item.RootDirectory));
                 }
             }
         }
@@ -214,17 +205,18 @@ namespace RoboBackups.Controls
         }
 
         void UpdateFolderSelection()
-        { 
-            if (ComboTargetDrive.SelectedItem != null)
+        {
+            DriveItem drive = ComboTargetDrive.SelectedItem as DriveItem;
+            if (drive != null)
             {
-                string backupPath = Settings.Instance.BackupPath;
+                string backupPath = Settings.Instance.GetFullBackupPath(drive.RootDirectory);
                 var item = ComboTargetDrive.SelectedItem as DriveItem;
+                bool found = false;
                 try
                 {
                     ComboTargetFolder.Items.Clear();
                     DirectoryInfo rootDir = new DirectoryInfo(item.RootDirectory);
                     ComboTargetFolder.Items.Add(rootDir);
-                    bool found = false;
                     foreach (var dir in rootDir.GetDirectories())
                     {
                         if ((dir.Attributes & FileAttributes.Hidden) == 0 && (dir.Attributes & FileAttributes.System) == 0 && (dir.Attributes & FileAttributes.ReadOnly) == 0)
@@ -237,14 +229,13 @@ namespace RoboBackups.Controls
                             }
                         }
                     }
-                    if (!found)
-                    {
-                        ComboTargetFolder.Text = backupPath;
-                    }
                 }
                 catch
                 {
-
+                }
+                if (ComboTargetFolder.SelectedItem == null && !string.IsNullOrEmpty(Settings.Instance.BackupPath))
+                {
+                    ComboTargetFolder.Text = Settings.Instance.BackupPath;
                 }
             }
         }
@@ -258,15 +249,20 @@ namespace RoboBackups.Controls
             if (e.AddedItems != null && e.AddedItems.Count > 0)
             {
                 DirectoryInfo dir = e.AddedItems[0] as DirectoryInfo;
-                // this is the backup path!
-                SetBackupPath(dir.FullName);
-                UpdateDriveSelection();
+                if (dir != null)
+                {
+                    var path = dir.FullName;
+                    var item = ComboTargetDrive.SelectedItem as DriveItem;
+                    if (item != null)
+                    {
+                        // unroot the backup path.
+                        path = path.Substring(item.RootDirectory.Length);
+                    }
+                    // this is the backup path!
+                    SetBackupPath(path);
+                    UpdateDriveSelection();
+                }
             }
-        }
-
-        private void OnLabelKeyDown(object sender, System.Windows.Input.KeyEventArgs e)
-        {
-
         }
 
         private void OnCloseClick(object sender, RoutedEventArgs e)
@@ -275,9 +271,34 @@ namespace RoboBackups.Controls
             if (f != null)
             {
                 SourceFolder item = f.DataContext as SourceFolder;
-                if (!item.IsNew())
+                if (item != null)
                 {
-                    sourceModel.RemoveItem(item);
+                    if (!item.IsNew())
+                    {
+                        sourceModel.RemoveItem(item);
+                    }
+                }
+                else
+                {
+                    DriveItem drive = f.DataContext as DriveItem;
+                    if (drive != null)
+                    {
+                        var removed = Settings.Instance.Targets.RemoveTargetDrive(drive.RootDirectory);
+                        var selected = (from i in removed where string.Compare(i, Settings.Instance.BackupPath, StringComparison.CurrentCultureIgnoreCase) == 0 select i).Any();
+                        if (selected)
+                        {
+                            // pick a different backup folder then.
+                            if (Settings.Instance.Targets.TargetPaths.Count > 0)
+                            {
+                                Settings.Instance.BackupPath = Settings.Instance.Targets.TargetPaths[0];
+                            } else
+                            {
+                                Settings.Instance.BackupPath = null;
+                            }
+                        }
+                        UpdateDriveSelection();
+                        UpdateFolderSelection();
+                    }
                 }
             }
         }
@@ -333,6 +354,10 @@ namespace RoboBackups.Controls
         public long TotalFreeSpace { get; set; }
 
         public string RootDirectory { get; internal set; }
+
+        public string DisplayLabel {  get { return this.ToString(); } }
+
+        public bool IsSelected { get; set; }
 
         public override string ToString()
         {
