@@ -16,7 +16,7 @@
     <AutoGenerateBindingRedirects>true</AutoGenerateBindingRedirects>
     <Deterministic>true</Deterministic>
     <IsWebBootstrapper>true</IsWebBootstrapper>
-    <PublishUrl>ftp://lovettsoftware.com/lovettsoftware.com/Downloads/RoboBackups/</PublishUrl>
+    <PublishUrl>D:\git\clovett\RoboBackups\publish\</PublishUrl>
     <Install>true</Install>
     <InstallFrom>Web</InstallFrom>
     <UpdateEnabled>true</UpdateEnabled>
@@ -26,11 +26,12 @@
     <UpdatePeriodically>false</UpdatePeriodically>
     <UpdateRequired>false</UpdateRequired>
     <MapFileExtensions>true</MapFileExtensions>
-    <InstallUrl>http://lovettsoftware.com/Downloads/RoboBackups/</InstallUrl>
+    <InstallUrl>https://lovettsoftwarestorage.blob.core.windows.net/downloads/RoboBackups/</InstallUrl>
     <SupportUrl>https://github.com/clovett/RoboBackups</SupportUrl>
     <ProductName>RoboBackups</ProductName>
     <PublisherName>Lovett Software</PublisherName>
-    <ApplicationRevision>2</ApplicationRevision>
+    <WebPage>install.htm</WebPage>
+    <ApplicationRevision>3</ApplicationRevision>
     <ApplicationVersion>1.0.1.%2a</ApplicationVersion>
     <UseApplicationTrust>false</UseApplicationTrust>
     <PublishWizardCompleted>true</PublishWizardCompleted>
