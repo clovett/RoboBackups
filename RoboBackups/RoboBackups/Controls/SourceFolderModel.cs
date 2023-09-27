@@ -104,13 +104,18 @@ namespace RoboBackups.Controls
 
         internal SourceFolder GetOrCreateItem(string path)
         {
-            SourceFolder item = (from i in Items where string.Compare(i.Path, path, StringComparison.OrdinalIgnoreCase) == 0 select i).FirstOrDefault();
+            SourceFolder item = (from i in Items where IsParentOf(i.Path, path) select i).FirstOrDefault();
             if (item == null) 
             {
                 item = new SourceFolder() { Path = path };
                 this.items.Add(item);
             }
             return item;
+        }
+
+        internal bool IsParentOf(string parent, string path)
+        {
+            return path.ToLowerInvariant().StartsWith(parent.ToLowerInvariant());
         }
 
         internal void RemoveItem(SourceFolder item)

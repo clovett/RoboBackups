@@ -29,9 +29,15 @@ namespace RoboBackups.Controls
             ComboTargetFolder.PreviewKeyDown += ComboTargetFolder_PreviewKeyDown;
 
             sourceModel = Settings.Instance.Model;
-            sourceModel.GetOrCreateItem(Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments));
-            sourceModel.GetOrCreateItem(Environment.GetFolderPath(Environment.SpecialFolder.MyMusic));
-            sourceModel.GetOrCreateItem(Environment.GetFolderPath(Environment.SpecialFolder.MyVideos));
+            foreach (var path in new string[]
+            {
+                Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments),
+                Environment.GetFolderPath(Environment.SpecialFolder.MyMusic),
+                Environment.GetFolderPath(Environment.SpecialFolder.MyVideos)
+            })
+            {
+                sourceModel.GetOrCreateItem(path);
+            }
             sourceModel.EnsureNewItem();
             SourceFolders.ItemsSource = sourceModel.Items;
 
@@ -211,7 +217,6 @@ namespace RoboBackups.Controls
             {
                 string backupPath = Settings.Instance.GetFullBackupPath(drive.RootDirectory);
                 var item = ComboTargetDrive.SelectedItem as DriveItem;
-                bool found = false;
                 try
                 {
                     ComboTargetFolder.Items.Clear();
@@ -224,7 +229,6 @@ namespace RoboBackups.Controls
                             ComboTargetFolder.Items.Add(dir);
                             if (string.Compare(dir.FullName, backupPath, StringComparison.OrdinalIgnoreCase) == 0)
                             {
-                                found = true;
                                 ComboTargetFolder.SelectedItem = dir;
                             }
                         }
