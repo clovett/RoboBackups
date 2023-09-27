@@ -6,11 +6,13 @@ set PUBLISH=%ROOT%\RoboBackups\bin\Release\app.publish
 
 if EXIST "%PUBLISH%" rd /s /q "%PUBLISH%"
 
-msbuild /target:rebuild src\RoboBackups.sln /p:Configuration=Release "/p:Platform=Any CPU"
+nuget restore RoboBackups.sln
 if ERRORLEVEL 1 goto :nobits
-msbuild /target:publish src\RoboBackups.sln /p:Configuration=Release "/p:Platform=Any CPU"
+msbuild /target:rebuild RoboBackups.sln /p:Configuration=Release "/p:Platform=Any CPU"
 if ERRORLEVEL 1 goto :nobits
-if not EXIST %PUBLISH%\XmlNotepad.application goto :nobits
+msbuild /target:publish RoboBackups.sln /p:Configuration=Release "/p:Platform=Any CPU"
+if ERRORLEVEL 1 goto :nobits
+if not EXIST %PUBLISH%\RoboBackups.application goto :nobits
 
 move "%PUBLISH%" "%ROOT%\publish"
 
